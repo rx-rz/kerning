@@ -8,4 +8,9 @@ export const authKeys = createQueryKeys("auth", {
 	oauth: (provider: "google") => [provider],
 });
 
-export const queries = mergeQueryKeys(authKeys);
+export const projectKeys = createQueryKeys("projects", {
+	list: null,
+	detail: (projectId: string) => [projectId],
+});
+
+export const queries = mergeQueryKeys(authKeys, projectKeys);

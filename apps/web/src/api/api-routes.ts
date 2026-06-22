@@ -12,6 +12,11 @@ export const API_ROUTES = {
 			verify: "auth/email-otp/verify-email",
 		},
 	},
+	projects: {
+		list: "projects",
+		create: "projects",
+		detail: (projectId: string) => `projects/${projectId}`,
+	},
 } as const;
 
 

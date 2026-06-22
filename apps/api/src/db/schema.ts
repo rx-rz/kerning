@@ -1,6 +1,8 @@
 import {
   account,
   accountRelations,
+  project,
+  projectRelations,
   session,
   sessionRelations,
   user,
@@ -14,8 +16,10 @@ export const schema = {
   user,
   session,
   account,
+  project,
   verification,
   userRelations,
   sessionRelations,
   accountRelations,
+  projectRelations,
 }

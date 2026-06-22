@@ -2,19 +2,21 @@
   "name": "api",
   "type": "module",
   "scripts": {
-    "dev": "NODE_ENV=development tsx watch src/index.ts",
+    "dev": "bun run --cwd ../../packages/shared build && NODE_ENV=development tsx watch src/index.ts",
     "db:generate": "NODE_ENV=development drizzle-kit generate",
     "db:migrate": "NODE_ENV=development drizzle-kit migrate",
-    "build": "tsc",
+    "build": "bun run --cwd ../../packages/shared build && tsc",
     "start": "NODE_ENV=production node dist/index.js"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.20",
     "@hono/node-server": "^2.0.5",
+    "@kerning/shared": "workspace:*",
     "better-auth": "^1.6.20",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.26",
+    "http-errors-enhanced": "^4.0.2",
     "pg": "^8.22.0",
     "resend": "^6.14.0",
     "valibot": "^1.4.1"
