@@ -1,0 +1,91 @@
+services:
+  db:
+    image: postgres:18.1
+    container_name: kerning_postgres
+    env_file:
+      - .env.development
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kerning}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_db_kerning:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-kerning}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kerning_redis
+    env_file:
+      - .env.development
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis}
+    command:
+      - redis-server
+      - "--bind"
+      - "0.0.0.0"
+      - "--port"
+      - "6379"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:-redis}"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_cache_kerning:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD:-redis}\" ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  drizzle-gateway:
+    image: ghcr.io/drizzle-team/gateway:latest
+    container_name: kerning_drizzle_gateway
+    ports:
+      - "4983:4983"
+    networks:
+      - app-network
+    environment:
+      PORT: 4983
+      STORE_PATH: /app
+      MASTERPASS: ${DRIZZLE_GATEWAY_MASTERPASS:-kerning_dev_masterpass}
+    volumes:
+      - drizzle_gateway_kerning:/app
+    restart: unless-stopped
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: kerning_redisinsight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight_kerning:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  pg_db_kerning:
+  redis_cache_kerning:
+  drizzle_gateway_kerning:
+  redisinsight_kerning:
