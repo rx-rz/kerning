@@ -6,7 +6,7 @@ function Field({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="field"
-      className={cn('space-y-1.5 data-[invalid=true]:text-destructive', className)}
+      className={cn('space-y-2 data-[invalid=true]:text-destructive', className)}
       {...props}
     />
   )
@@ -17,7 +17,7 @@ function FieldLabel({ className, ...props }: React.ComponentProps<'label'>) {
     // biome-ignore lint/a11y/noLabelWithoutControl: Consumers pass htmlFor when binding this shared field label.
     <label
       data-slot="field-label"
-      className={cn('block text-xs font-medium text-foreground', className)}
+      className={cn('mono-label block text-muted-foreground', className)}
       {...props}
     />
   )
@@ -37,7 +37,7 @@ function FieldError({
   }
 
   return (
-    <p data-slot="field-error" className={cn('text-xs text-destructive', className)} {...props}>
+    <p data-slot="field-error" className={cn('font-mono text-[11px] font-semibold uppercase tracking-[.05em] text-destructive', className)} {...props}>
       {message}
     </p>
   )

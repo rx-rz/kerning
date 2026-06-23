@@ -24,12 +24,18 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "group/tabs-list inline-flex w-fit items-center justify-center gap-[3px] rounded-md border border-hairline p-1 text-subtle group-data-[orientation=horizontal]/tabs:h-auto group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col data-[variant=line]:rounded-none data-[variant=line]:border-0 data-[variant=line]:p-0",
+  [
+    "group/tabs-list inline-flex w-fit items-center justify-center text-muted-foreground",
+    "group-data-[orientation=horizontal]/tabs:h-auto",
+    "group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col",
+  ],
   {
     variants: {
       variant: {
-        default: "bg-foreground/[.045]",
-        line: "gap-1 bg-transparent",
+        default:
+          "gap-1 rounded-full bg-muted p-1.5 shadow-inset",
+        line:
+          "gap-1 rounded-none border-b border-border bg-transparent p-0 shadow-none",
       },
     },
     defaultVariants: {
@@ -62,10 +68,43 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-[6px] border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap text-subtle transition-all duration-150 ease-[var(--ease)] group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 group-data-[variant=default]/tabs-list:data-[state=active]:shadow-small group-data-[variant=line]/tabs-list:data-[state=active]:shadow-none dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent",
-        "data-[state=active]:bg-surface data-[state=active]:text-foreground",
-        "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-[state=active]:after:opacity-100",
+        [
+          "relative inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap",
+          "px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[.06em]",
+          "text-muted-foreground outline-none transition-[color,background-color,box-shadow,opacity] duration-150 ease-(--ease)",
+          "hover:text-foreground",
+          "focus-visible:ring-[3px] focus-visible:ring-ring/25",
+          "disabled:pointer-events-none disabled:opacity-50",
+          "group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start",
+          "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        ],
+
+        [
+          "group-data-[variant=default]/tabs-list:rounded-full",
+          "group-data-[variant=default]/tabs-list:data-[state=active]:bg-foreground",
+          "group-data-[variant=default]/tabs-list:data-[state=active]:text-background",
+          "group-data-[variant=default]/tabs-list:data-[state=active]:shadow-hairline",
+        ],
+
+        [
+          "group-data-[variant=line]/tabs-list:rounded-none",
+          "group-data-[variant=line]/tabs-list:bg-transparent",
+          "group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent",
+          "group-data-[variant=line]/tabs-list:data-[state=active]:text-foreground",
+          "group-data-[variant=line]/tabs-list:data-[state=active]:shadow-none",
+          "group-data-[variant=line]/tabs-list:after:absolute",
+          "group-data-[variant=line]/tabs-list:after:bg-foreground",
+          "group-data-[variant=line]/tabs-list:after:opacity-0",
+          "group-data-[variant=line]/tabs-list:after:transition-opacity",
+          "group-data-[variant=line]/tabs-list:data-[state=active]:after:opacity-100",
+          "group-data-[orientation=horizontal]/tabs:group-data-[variant=line]/tabs-list:after:inset-x-0",
+          "group-data-[orientation=horizontal]/tabs:group-data-[variant=line]/tabs-list:after:-bottom-px",
+          "group-data-[orientation=horizontal]/tabs:group-data-[variant=line]/tabs-list:after:h-0.5",
+          "group-data-[orientation=vertical]/tabs:group-data-[variant=line]/tabs-list:after:inset-y-0",
+          "group-data-[orientation=vertical]/tabs:group-data-[variant=line]/tabs-list:after:-right-1",
+          "group-data-[orientation=vertical]/tabs:group-data-[variant=line]/tabs-list:after:w-0.5",
+        ],
+
         className
       )}
       {...props}

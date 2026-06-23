@@ -9,29 +9,23 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       data-slot="input"
       className={cn(
         [
-          "h-[41px] w-full min-w-0 rounded-md border border-hairline",
-          "bg-component-inset px-3 py-2 text-sm text-foreground",
-          "shadow-[rgba(0,0,0,.05)_0_1px_0_inset,rgba(255,255,255,.48)_0_1px_0]",
-          "outline-none transition-[border-color,box-shadow,background-color,color] duration-150 ease-[var(--ease)]",
+          "min-h-[42px] w-full min-w-0 rounded-lg border-0",
+          "bg-background px-3 py-2 font-mono text-xs font-semibold tracking-[.05em] text-foreground",
+          "shadow-[inset_0_0_0_1px_var(--line-hair)]",
+          "outline-none transition-[box-shadow,background-color,color] duration-150 ease-[var(--ease)]",
 
-          "placeholder:text-muted-foreground/50",
+          "placeholder:font-mono placeholder:text-muted-foreground/60 placeholder:uppercase",
           "selection:bg-primary selection:text-primary-foreground",
 
           "file:inline-flex file:h-7 file:border-0 file:bg-transparent",
-          "file:text-sm file:font-medium file:text-foreground",
+          "file:font-mono file:text-xs file:font-semibold file:uppercase file:tracking-[.05em] file:text-foreground",
 
-          "hover:bg-paper",
-          "focus-visible:border-primary",
-          "focus-visible:ring-[3px] focus-visible:ring-primary/20",
+          "hover:bg-muted",
+          "focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_18%,transparent),inset_0_0_0_1px_var(--ring)]",
 
           "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
 
-          "aria-invalid:border-destructive",
-          "aria-invalid:ring-[3px] aria-invalid:ring-destructive/20",
-
-          "dark:bg-component-inset",
-          "dark:shadow-[rgba(0,0,0,.35)_0_1px_0_inset,rgba(255,255,255,.08)_0_1px_0]",
-          "dark:hover:bg-component",
+          "aria-invalid:shadow-[0_0_0_3px_color-mix(in_srgb,var(--destructive)_18%,transparent),inset_0_0_0_1px_var(--destructive)]",
         ],
         className
       )}

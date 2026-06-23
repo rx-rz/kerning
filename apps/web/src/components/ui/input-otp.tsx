@@ -53,10 +53,10 @@ function InputOTPSlot({
       data-active={isActive}
       className={cn(
         [
-          'relative flex h-11 w-10 items-center justify-center border-y border-r border-hairline',
-          'bg-component-inset text-sm font-medium text-foreground shadow-small transition-all',
-          'first:rounded-l-md first:border-l last:rounded-r-md',
-          'data-[active=true]:z-10 data-[active=true]:border-primary data-[active=true]:ring-[3px] data-[active=true]:ring-primary/20',
+          'relative flex h-11 w-10 items-center justify-center border-0',
+          'bg-background font-mono text-sm font-semibold text-foreground shadow-[inset_0_0_0_1px_var(--line-hair)] transition-all',
+          'first:rounded-l-lg last:rounded-r-lg',
+          'data-[active=true]:z-10 data-[active=true]:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_18%,transparent),inset_0_0_0_1px_var(--ring)]',
         ],
         className
       )}

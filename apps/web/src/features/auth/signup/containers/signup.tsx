@@ -77,7 +77,7 @@ export function SignupForm() {
 
 			<Button
 				className="w-full mt-3 p-6"
-				variant={"accent"}
+
 				disabled={isPending}
 			>
 				<PendingButtonContent

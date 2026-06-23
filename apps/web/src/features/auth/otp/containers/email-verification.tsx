@@ -83,7 +83,7 @@ export function EmailVerification({ email }: EmailVerificationProps) {
 					Enter the six-digit code sent to {email}.
 				</p>
 			</div>
-
+			{error ? <p className="text-sm text-destructive font-bold">{error}</p> : null}
 			<InputOTP
 				maxLength={6}
 				pattern={REGEXP_ONLY_DIGITS}
@@ -98,10 +98,10 @@ export function EmailVerification({ email }: EmailVerificationProps) {
 				</InputOTPGroup>
 			</InputOTP>
 
-			{error ? <p className="text-sm text-destructive">{error}</p> : null}
+
 
 			<div className="flex flex-col gap-4">
-				<Button disabled={!canVerify} onClick={handleVerify}>
+				<Button disabled={!canVerify} className="p-6" onClick={handleVerify}>
 					<PendingButtonContent
 						icon={ShieldCheck}
 						idleText="Verify email"
@@ -112,6 +112,7 @@ export function EmailVerification({ email }: EmailVerificationProps) {
 				<Button
 					type="button"
 					variant="outline"
+					className="p-6 tabular-nums"
 					onClick={handleResend}
 					disabled={cooldown > 0 || isPending}
 					title={cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
