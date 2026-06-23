@@ -1,4 +1,4 @@
-
+import type { FontAxis, ProjectFont } from "@kerning/shared"
 import { openDB } from "idb"
 
 const DB_NAME = "kerning"
@@ -8,13 +8,7 @@ export type FontFaceKind = "static" | "variable"
 export type FontStyle = "normal" | "italic"
 export type FontFormat = "ttf" | "otf" | "woff" | "woff2"
 
-export type StoredFontAxis = {
-  tag: string
-  name: string
-  min: number
-  max: number
-  defaultValue: number
-}
+export type StoredFontAxis = FontAxis
 
 export type StoredFontFace = {
   id: string
@@ -53,8 +47,15 @@ export type StoredFontFace = {
 
 export type StoredFontFamily = {
   id: string
+  source?: "upload" | "google"
   name: string
   cssFamily: string
+  category?: string
+  variants?: string[]
+  subsets?: string[]
+  axes?: StoredFontAxis[]
+  version?: string
+  lastModified?: string
   faces: StoredFontFace[]
   createdAt: string
   updatedAt: string
@@ -79,6 +80,26 @@ export async function getFontDB() {
 export async function saveFontFamily(fontFamily: StoredFontFamily) {
   const db = await getFontDB()
   await db.put(FONT_FAMILY_STORE, fontFamily)
+}
+
+export async function saveGoogleFont(projectFont: ProjectFont) {
+  const now = new Date().toISOString()
+
+  await saveFontFamily({
+    id: projectFont.id,
+    source: "google",
+    name: projectFont.family,
+    cssFamily: projectFont.family,
+    category: projectFont.category,
+    variants: projectFont.variants,
+    subsets: projectFont.subsets,
+    axes: projectFont.axes,
+    version: projectFont.version,
+    lastModified: projectFont.lastModified,
+    faces: [],
+    createdAt: projectFont.createdAt,
+    updatedAt: now,
+  })
 }
 
 export async function getFontFamily(id: string) {

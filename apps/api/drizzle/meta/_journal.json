@@ -15,6 +15,13 @@
       "when": 1782133865705,
       "tag": "0001_stale_jackal",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782248011360,
+      "tag": "0002_eminent_nomad",
+      "breakpoints": true
     }
   ]
 }

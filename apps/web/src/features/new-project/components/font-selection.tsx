@@ -64,22 +64,23 @@ export function FontSelectSection({
 		},
 	];
 
-    if(fonts.length === 0) {
-        return null;
-    }
+	if (fonts.length === 0) {
+		return null;
+	}
+
 	return (
-		<section className="space-y-3">
+		<section className="space-y-3 ">
 			<div className="font-mono text-lg font-semibold uppercase  text-muted-foreground">
 				Font Selection
 			</div>
 
-			<div className="space-y-4 mt-3">
+			<div className="space-y-2">
 				{slots.map((slot) => (
 					<div key={slot.number} className="w-full">
 						<div>
 							<label
 								htmlFor={slot.id}
-								className="mb-2 block capitalize font-semibold tracking-wide text-muted-foreground"
+								className="mb-1.5 block capitalize font-semibold tracking-wide text-muted-foreground"
 							>
 								{slot.label}
 							</label>
@@ -87,7 +88,7 @@ export function FontSelectSection({
 							<Select value={slot.value} onValueChange={slot.onChange}>
 								<SelectTrigger
 									id={slot.id}
-									className="h-11 w-full"
+									className="min-h-11 w-full py-2.5"
 									disabled={!fonts.length}
 								>
 									<SelectValue placeholder={slot.placeholder} />

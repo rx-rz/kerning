@@ -57,10 +57,39 @@ const envSchema = v.pipe(
       v.string(),
       v.minLength(1, 'GOOGLE_CLIENT_SECRET is required')
     ),
+    GOOGLE_FONTS_API_KEY: v.optional(v.string(), ''),
+    GOOGLE_FONTS_CACHE_TTL_SECONDS: v.optional(
+      v.pipe(
+        v.string(),
+        v.toNumber(),
+        v.finite('GOOGLE_FONTS_CACHE_TTL_SECONDS must be a finite number'),
+        v.integer('GOOGLE_FONTS_CACHE_TTL_SECONDS must be an integer'),
+        v.minValue(1, 'GOOGLE_FONTS_CACHE_TTL_SECONDS must be positive')
+      ),
+      '86400'
+    ),
+    REDIS_HOST: v.optional(v.string(), 'localhost'),
+    REDIS_PORT: v.optional(
+      v.pipe(
+        v.string(),
+        v.toNumber(),
+        v.finite('REDIS_PORT must be a finite number'),
+        v.integer('REDIS_PORT must be an integer'),
+        v.minValue(1, 'REDIS_PORT must be positive')
+      ),
+      '6379'
+    ),
+    REDIS_PASSWORD: v.optional(v.string()),
+    REDIS_URL: v.optional(v.pipe(v.string(), v.url('REDIS_URL must be a valid URL'))),
     RESEND_API_KEY: v.pipe(
       v.string(),
       v.minLength(1, 'RESEND_API_KEY is required')
     ),
+    CLOUDFLARE_ACCESS_KEY_ID: v.optional(v.string(), ''),
+    CLOUDFLARE_SECRET_ACCESS_KEY: v.optional(v.string(), ''),
+    CLOUDFLARE_ENDPOINT: v.optional(v.string(), ''),
+    CLOUDFLARE_BUCKET_NAME: v.optional(v.string(), ''),
+    CLOUDFLARE_PUBLIC_ACCESS_URL: v.optional(v.string(), ''),
     AUTH_EMAIL_FROM: v.optional(
       v.pipe(v.string(), v.minLength(1)),
       'Kerning <auth@kerning.click>'
@@ -82,6 +111,40 @@ const envSchema = v.pipe(
       'BETTER_AUTH_URL and SITE_URL must use https in production'
     ),
     ['BETTER_AUTH_URL']
+  ),
+  v.forward(
+    v.partialCheck(
+      [
+        ['NODE_ENV'],
+        ['CLOUDFLARE_ACCESS_KEY_ID'],
+        ['CLOUDFLARE_SECRET_ACCESS_KEY'],
+        ['CLOUDFLARE_ENDPOINT'],
+        ['CLOUDFLARE_BUCKET_NAME'],
+        ['CLOUDFLARE_PUBLIC_ACCESS_URL'],
+      ],
+      ({
+        NODE_ENV,
+        CLOUDFLARE_ACCESS_KEY_ID,
+        CLOUDFLARE_SECRET_ACCESS_KEY,
+        CLOUDFLARE_ENDPOINT,
+        CLOUDFLARE_BUCKET_NAME,
+        CLOUDFLARE_PUBLIC_ACCESS_URL,
+      }) => {
+        if (NODE_ENV !== 'production') {
+          return true
+        }
+
+        return Boolean(
+          CLOUDFLARE_ACCESS_KEY_ID &&
+            CLOUDFLARE_SECRET_ACCESS_KEY &&
+            CLOUDFLARE_ENDPOINT &&
+            CLOUDFLARE_BUCKET_NAME &&
+            CLOUDFLARE_PUBLIC_ACCESS_URL
+        )
+      },
+      'Cloudflare R2 environment variables are required in production'
+    ),
+    ['CLOUDFLARE_ENDPOINT']
   )
 )
 

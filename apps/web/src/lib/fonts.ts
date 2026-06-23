@@ -1,5 +1,7 @@
 // lib/font-upload.ts
 
+import type { FontAxis, ProjectFont } from "@kerning/shared";
+
 import {
 	type FontFormat,
 	type FontStyle,
@@ -8,6 +10,7 @@ import {
 	type StoredFontFace,
 	type StoredFontFamily,
 	saveFontFamily,
+	saveGoogleFont,
 	toFontFamilyMeta,
 } from "#/db/font-db";
 
@@ -70,6 +73,38 @@ export function formatBytes(bytes: number) {
 
 export function createCssFontFamily(id: string) {
 	return `kerning-font-family-${id}`;
+}
+
+export function createGoogleFontId(family: string) {
+	return `google:${family
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")}`;
+}
+
+export function createGoogleFontProjectFont(input: {
+	id?: string;
+	family: string;
+	category?: string;
+	variants: string[];
+	subsets?: string[];
+	axes?: FontAxis[];
+	version?: string;
+	lastModified?: string;
+}): ProjectFont {
+	return {
+		id: input.id ?? createGoogleFontId(input.family),
+		source: "google",
+		family: input.family,
+		category: input.category,
+		variants: input.variants,
+		subsets: input.subsets,
+		axes: input.axes,
+		version: input.version,
+		lastModified: input.lastModified,
+		createdAt: new Date().toISOString(),
+	};
 }
 
 /**
@@ -293,8 +328,19 @@ export function normalizeFontFamilyName(value: string) {
  * Prevents registering the same face twice in one browser session.
  */
 const loadedFaces = new Set<string>();
+const loadedGoogleFontStylesheets = new Set<string>();
 
 export async function loadFontFamilyIntoDocument(fontFamily: StoredFontFamily) {
+	if (fontFamily.source === "google") {
+		loadGoogleFontStylesheet({
+			family: fontFamily.name,
+			variants: fontFamily.variants ?? [],
+			axes: fontFamily.axes,
+		});
+
+		return fontFamily.cssFamily;
+	}
+
 	for (const face of fontFamily.faces) {
 		if (loadedFaces.has(face.id)) continue;
 
@@ -323,6 +369,187 @@ export async function loadFontFamilyIntoDocument(fontFamily: StoredFontFamily) {
 	return fontFamily.cssFamily;
 }
 
+export async function importGoogleFont(input: {
+	id?: string;
+	family: string;
+	category?: string;
+	variants: string[];
+	subsets?: string[];
+	axes?: FontAxis[];
+	version?: string;
+	lastModified?: string;
+}) {
+	const projectFont = createGoogleFontProjectFont(input);
+
+	await saveGoogleFont(projectFont);
+	loadGoogleFontStylesheet(projectFont);
+
+	return {
+		id: projectFont.id,
+		source: projectFont.source,
+		name: projectFont.family,
+		cssFamily: projectFont.family,
+		category: projectFont.category,
+		variants: projectFont.variants,
+		subsets: projectFont.subsets,
+		axes: projectFont.axes,
+		version: projectFont.version,
+		lastModified: projectFont.lastModified,
+		faces: [],
+		createdAt: projectFont.createdAt,
+		updatedAt: projectFont.createdAt,
+	};
+}
+
+export function loadGoogleFontStylesheet(input: {
+	family: string;
+	variants?: string[];
+	axes?: FontAxis[];
+}) {
+	if (typeof document === "undefined") return;
+
+	const cssUrl = createGoogleCssUrl(
+		input.family,
+		input.variants ?? [],
+		input.axes,
+	);
+	const linkId = `google-font-${createGoogleFontId(input.family).replace(
+		/[^a-z0-9-]/gi,
+		"-",
+	)}-${hashString(cssUrl)}`;
+
+	if (
+		loadedGoogleFontStylesheets.has(linkId) ||
+		document.getElementById(linkId)
+	) {
+		loadedGoogleFontStylesheets.add(linkId);
+		return;
+	}
+
+	const link = document.createElement("link");
+	link.id = linkId;
+	link.rel = "stylesheet";
+	link.href = cssUrl;
+
+	document.head.appendChild(link);
+	loadedGoogleFontStylesheets.add(linkId);
+}
+
+export function getGoogleFontDefaultWeight(input: {
+	variants?: string[];
+	axes?: FontAxis[];
+}) {
+	const weightAxis = input.axes?.find((axis) => axis.tag === "wght");
+
+	if (weightAxis) {
+		if (
+			weightAxis.defaultValue >= weightAxis.min &&
+			weightAxis.defaultValue <= weightAxis.max
+		) {
+			return weightAxis.defaultValue;
+		}
+
+		return weightAxis.min;
+	}
+
+	const weights = getGoogleFontWeights(input.variants ?? []);
+
+	return weights.includes(400) ? 400 : (weights[0] ?? 400);
+}
+
+function createGoogleCssUrl(
+	familyName: string,
+	variants: string[],
+	axes?: FontAxis[],
+) {
+	const url = new URL("https://fonts.googleapis.com/css2");
+	const family = familyName.trim().replace(/\s+/g, " ");
+	const weightAxis = axes?.find((axis) => axis.tag === "wght");
+	const hasItalic = variants.some((variant) => variant.includes("italic"));
+
+	if (weightAxis) {
+		url.searchParams.set(
+			"family",
+			hasItalic
+				? `${family}:ital,wght@0,${weightAxis.min}..${weightAxis.max};1,${weightAxis.min}..${weightAxis.max}`
+				: `${family}:wght@${weightAxis.min}..${weightAxis.max}`,
+		);
+	} else if (hasItalic) {
+		const pairs = getGoogleFontVariantPairs(variants)
+			.map(({ italic, weight }) => `${italic ? 1 : 0},${weight}`)
+			.join(";");
+		url.searchParams.set("family", `${family}:ital,wght@${pairs}`);
+	} else {
+		const weights = getGoogleFontWeights(variants);
+
+		if (weights.length > 1) {
+			url.searchParams.set("family", `${family}:wght@${weights.join(";")}`);
+		} else if (weights.length === 1 && weights[0] !== 400) {
+			url.searchParams.set("family", `${family}:wght@${weights[0]}`);
+		} else {
+			url.searchParams.set("family", family);
+		}
+	}
+
+	url.searchParams.set("display", "swap");
+
+	return url.toString();
+}
+
+function getGoogleFontVariantPairs(variants: string[]) {
+	const pairs = variants.flatMap((variant) => {
+		if (variant === "regular") {
+			return [{ italic: false, weight: 400 }];
+		}
+
+		if (variant === "italic") {
+			return [{ italic: true, weight: 400 }];
+		}
+
+		const match = /^(\d+)(italic)?$/.exec(variant);
+
+		if (!match) return [];
+
+		return [
+			{
+				italic: Boolean(match[2]),
+				weight: Number(match[1]),
+			},
+		];
+	});
+
+	return Array.from(
+		new Map(
+			pairs
+				.sort(
+					(a, b) => Number(a.italic) - Number(b.italic) || a.weight - b.weight,
+				)
+				.map((pair) => [`${Number(pair.italic)}:${pair.weight}`, pair]),
+		).values(),
+	);
+}
+
+function getGoogleFontWeights(variants: string[]) {
+	const weights = variants
+		.map((variant) =>
+			variant === "regular" ? 400 : Number.parseInt(variant, 10),
+		)
+		.filter((weight) => Number.isFinite(weight));
+
+	return Array.from(new Set(weights)).sort((a, b) => a - b);
+}
+
+function hashString(value: string) {
+	let hash = 0;
+
+	for (let index = 0; index < value.length; index += 1) {
+		hash = (hash << 5) - hash + value.charCodeAt(index);
+		hash |= 0;
+	}
+
+	return Math.abs(hash).toString(36);
+}
+
 export async function uploadFontFiles(
 	files: FileList | null,
 	options: UploadFontFilesOptions = {},
@@ -338,6 +565,8 @@ export async function uploadFontFiles(
 	const familyMap = new Map<string, StoredFontFamily>();
 
 	for (const family of existingFamilies) {
+		if (family.source === "google") continue;
+
 		const familyName = normalizeFontFamilyName(family.name);
 		const familyKey = familyName.toLowerCase();
 		const existingFamily = familyMap.get(familyKey);
@@ -377,8 +606,10 @@ export async function uploadFontFiles(
 
 			family = {
 				id: familyId,
+				source: "upload",
 				name: parsed.familyName,
 				cssFamily: createCssFontFamily(familyId),
+				variants: [],
 				faces: [],
 				createdAt: now,
 				updatedAt: now,

@@ -1,1 +1,2 @@
-export * from './project.entity.js'
+export * from "./file.entity.js";
+export * from "./project.entity.js";

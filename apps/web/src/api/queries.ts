@@ -13,4 +13,13 @@ export const projectKeys = createQueryKeys("projects", {
 	detail: (projectId: string) => [projectId],
 });
 
-export const queries = mergeQueryKeys(authKeys, projectKeys);
+export const googleFontKeys = createQueryKeys("googleFonts", {
+	list: (input: {
+		q?: string;
+		category?: string;
+		limit?: number;
+		enabled?: boolean;
+	}) => [input],
+});
+
+export const queries = mergeQueryKeys(authKeys, projectKeys, googleFontKeys);
