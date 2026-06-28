@@ -35,9 +35,11 @@ import { api } from "#/lib/api";
 import { importGoogleFont, loadFontFamilyIntoDocument } from "#/lib/fonts";
 
 export const Route = createFileRoute("/new")({
-  validateSearch: (search): { confirm: boolean } => ({
-    confirm: search.confirm === true || search.confirm === "true",
-  }),
+  validateSearch: (search): { confirm?: boolean } => {
+    const confirm = search.confirm === true || search.confirm === "true";
+
+    return confirm ? { confirm: true } : {};
+  },
   component: RouteComponent,
 });
 
@@ -171,7 +173,10 @@ function RouteComponent() {
       await queryClient.invalidateQueries({
         queryKey: queries.projects.list.queryKey,
       });
-      await navigate({ to: "/" });
+      await navigate({
+        to: "/project/$projectId",
+        params: { projectId: updatedProject.project.id },
+      });
     } finally {
       setIsSubmittingProject(false);
     }

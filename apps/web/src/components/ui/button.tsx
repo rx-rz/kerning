@@ -8,8 +8,8 @@ const buttonVariants = cva(
   [
     "relative isolate inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap",
     "rounded-lg border-0 font-mono text-[11px] font-semibold uppercase tracking-[.06em] outline-none",
-    "transition-[transform,filter,box-shadow,background-color,color,border-color,opacity] duration-150 ease-[var(--ease)]",
-    "active:translate-y-0",
+    "transition-[transform,filter,box-shadow,background-color,color,border-color,opacity] duration-150 ease-[cubic-bezier(.2,.8,.2,1)]",
+    "hover:brightness-[1.025] active:scale-[.985] motion-reduce:transform-none motion-reduce:transition-none",
     "focus-visible:ring-[3px] focus-visible:ring-ring/25",
     "disabled:pointer-events-none disabled:opacity-50",
     "aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",

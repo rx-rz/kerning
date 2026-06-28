@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
+import { Route as ProjectProjectIdRouteImport } from './routes/project.$projectId'
 import { Route as DemoPosthogRouteImport } from './routes/demo/posthog'
 import { Route as AuthVerifyEmailRouteImport } from './routes/auth.verify-email'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
@@ -43,6 +44,11 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthRoute,
+} as any)
+const ProjectProjectIdRoute = ProjectProjectIdRouteImport.update({
+  id: '/project/$projectId',
+  path: '/project/$projectId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DemoPosthogRoute = DemoPosthogRouteImport.update({
   id: '/demo/posthog',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/auth/signup': typeof AuthSignupRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/demo/posthog': typeof DemoPosthogRoute
+  '/project/$projectId': typeof ProjectProjectIdRoute
   '/auth/': typeof AuthIndexRoute
 }
 export interface FileRoutesByTo {
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthSignupRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/demo/posthog': typeof DemoPosthogRoute
+  '/project/$projectId': typeof ProjectProjectIdRoute
   '/auth': typeof AuthIndexRoute
 }
 export interface FileRoutesById {
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/auth/signup': typeof AuthSignupRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/demo/posthog': typeof DemoPosthogRoute
+  '/project/$projectId': typeof ProjectProjectIdRoute
   '/auth/': typeof AuthIndexRoute
 }
 export interface FileRouteTypes {
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/auth/verify-email'
     | '/demo/posthog'
+    | '/project/$projectId'
     | '/auth/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/auth/verify-email'
     | '/demo/posthog'
+    | '/project/$projectId'
     | '/auth'
   id:
     | '__root__'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/auth/verify-email'
     | '/demo/posthog'
+    | '/project/$projectId'
     | '/auth/'
   fileRoutesById: FileRoutesById
 }
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   NewRoute: typeof NewRoute
   DemoPosthogRoute: typeof DemoPosthogRoute
+  ProjectProjectIdRoute: typeof ProjectProjectIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -177,6 +190,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/'
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/project/$projectId': {
+      id: '/project/$projectId'
+      path: '/project/$projectId'
+      fullPath: '/project/$projectId'
+      preLoaderRoute: typeof ProjectProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/demo/posthog': {
       id: '/demo/posthog'
@@ -231,6 +251,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   NewRoute: NewRoute,
   DemoPosthogRoute: DemoPosthogRoute,
+  ProjectProjectIdRoute: ProjectProjectIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

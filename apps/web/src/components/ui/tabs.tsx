@@ -69,10 +69,10 @@ function TabsTrigger({
       data-slot="tabs-trigger"
       className={cn(
         [
-          "relative inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap",
+          "relative inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 whitespace-nowrap",
           "px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[.06em]",
-          "text-muted-foreground outline-none transition-[color,background-color,box-shadow,opacity] duration-150 ease-(--ease)",
-          "hover:text-foreground",
+          "text-muted-foreground outline-none transition-[color,background-color,box-shadow,opacity,filter,transform] duration-150 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transform-none motion-reduce:transition-none",
+          "hover:brightness-[1.025] hover:text-foreground active:scale-[.985]",
           "focus-visible:ring-[3px] focus-visible:ring-ring/25",
           "disabled:pointer-events-none disabled:opacity-50",
           "group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start",

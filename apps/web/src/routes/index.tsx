@@ -24,6 +24,7 @@ function DashboardRoute() {
             </span>
           </Link>
 
+
           <Button asChild className="md:mt-8 md:w-full">
             <Link to="/new">
               <Plus />
@@ -36,12 +37,14 @@ function DashboardRoute() {
           <SidebarLink to={APP_ROUTES.DASHBOARD} active>
             <LayoutDashboard />
             Dashboard
+
           </SidebarLink>
         </nav>
       </aside>
 
       <section className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
+
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="font-mono text-xs font-semibold uppercase text-muted-foreground">
@@ -76,31 +79,38 @@ function DashboardRoute() {
             ) : projects.length ? (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {projects.map((project) => (
-                  <Card key={project.id} className="border p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <h2 className="truncate text-lg font-semibold">
-                          {project.name}
-                        </h2>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Updated {formatProjectDate(project.updatedAt)}
-                        </p>
+                  <Link
+                    key={project.id}
+                    to="/project/$projectId"
+                    params={{ projectId: project.id }}
+                    className="group rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/25"
+                  >
+                    <Card className="h-full border p-5 transition-[border-color,background-color] group-hover:border-foreground/20 group-hover:bg-surface-wash">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <h2 className="truncate text-lg font-semibold">
+                            {project.name}
+                          </h2>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Updated {formatProjectDate(project.updatedAt)}
+                          </p>
+                        </div>
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent">
+                          <FolderKanban className="size-5" />
+                        </div>
                       </div>
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent">
-                        <FolderKanban className="size-5" />
-                      </div>
-                    </div>
 
-                    <div className="mt-6 flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground">
-                      <span>
-                        {project.fonts?.length ?? 0}{" "}
-                        {(project.fonts?.length ?? 0) === 1 ? "font" : "fonts"}
-                      </span>
-                      <span className="font-mono uppercase">
-                        v{project.version}
-                      </span>
-                    </div>
-                  </Card>
+                      <div className="mt-6 flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground">
+                        <span>
+                          {project.fonts?.length ?? 0}{" "}
+                          {(project.fonts?.length ?? 0) === 1 ? "font" : "fonts"}
+                        </span>
+                        <span className="font-mono uppercase">
+                          v{project.version}
+                        </span>
+                      </div>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             ) : (

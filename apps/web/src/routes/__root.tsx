@@ -1,6 +1,5 @@
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { useState } from "react";
 
 import PostHogProvider from "../integrations/posthog/provider";
@@ -24,6 +23,14 @@ export const Route = createRootRoute({
 			},
 		],
 		links: [
+			{
+				rel: "preconnect",
+				href: "https://rsms.me/",
+			},
+			{
+				rel: "stylesheet",
+				href: "https://rsms.me/inter/inter.css",
+			},
 			{
 				rel: "stylesheet",
 				href: appCss,
