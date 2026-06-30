@@ -8,6 +8,10 @@ import {
 	SelectValue,
 } from "#/components/ui/select";
 import {
+	CardFillInspector,
+	CardTextureInspector,
+} from "#/features/editor/components/card-fill-inspector";
+import {
 	MAX_CARD_HEIGHT,
 	MAX_CARD_WIDTH,
 	MIN_CARD_DIMENSION,
@@ -32,7 +36,7 @@ type CardInspectorProps = {
 	card: EditorCard;
 };
 
-type NumericCardKey = "width" | "height" | "borderRadius";
+type NumericCardKey = "width" | "height";
 
 export function CardInspector({ card }: CardInspectorProps) {
 	const updateCard = useEditorStore((state) => state.updateCard);
@@ -50,9 +54,7 @@ export function CardInspector({ card }: CardInspectorProps) {
 		const nextValue =
 			key === "width"
 				? Math.min(MAX_CARD_WIDTH, Math.max(MIN_CARD_DIMENSION, parsedValue))
-				: key === "height"
-					? Math.min(MAX_CARD_HEIGHT, Math.max(MIN_CARD_DIMENSION, parsedValue))
-					: Math.max(0, parsedValue);
+				: Math.min(MAX_CARD_HEIGHT, Math.max(MIN_CARD_DIMENSION, parsedValue));
 
 		updateCard(card.id, { [key]: nextValue });
 	}
@@ -128,32 +130,27 @@ export function CardInspector({ card }: CardInspectorProps) {
 			</InspectorSection>
 
 			<InspectorSection title="Appearance">
-				<Field className="relative space-y-0">
-					<FieldLabel
-						className="pointer-events-none absolute top-1/2 left-4 z-10 -translate-y-1/2 capitalize"
-						htmlFor="card-background"
-					>
-						Background
-					</FieldLabel>
-					<span
-						className="pointer-events-none absolute top-1/2 left-29 z-10 size-4 -translate-y-1/2 rounded-sm border"
-						style={{ background: card.background }}
-					/>
-					<Input
-						id="card-background"
-						className="pr-4 pl-36 text-right font-mono"
-						value={card.background}
-						onChange={(event) =>
-							updateCard(card.id, { background: event.target.value })
-						}
-					/>
-				</Field>
 				<NumberField
 					id="card-border-radius"
 					label="Border Radius"
 					min={0}
-					value={card.borderRadius}
-					onChange={(value) => updateNumericValue("borderRadius", value)}
+					value={card.settings.borderRadius}
+					onChange={(value) => {
+						const borderRadius = Number(value);
+						if (Number.isFinite(borderRadius)) {
+							updateCardSettings(card.id, {
+								borderRadius: Math.max(0, borderRadius),
+							});
+						}
+					}}
+				/>
+				<CardFillInspector
+					fill={card.settings.fill}
+					onChange={(fill) => updateCardSettings(card.id, { fill })}
+				/>
+				<CardTextureInspector
+					texture={card.settings.texture}
+					onChange={(texture) => updateCardSettings(card.id, { texture })}
 				/>
 			</InspectorSection>
 		</div>

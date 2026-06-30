@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-
+import {
+	createDefaultFill,
+	createDefaultTextureFill,
+	getCardFillStyle,
+} from "#/features/editor/lib/card-fill";
 import { getCardSizeFromAspectRatio } from "#/features/editor/lib/card-size";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 import type { CardAspectRatio, EditorCard } from "#/features/editor/types";
@@ -27,6 +31,44 @@ describe("getCardSizeFromAspectRatio", () => {
 	});
 });
 
+describe("card fills", () => {
+	it("creates editable linear and radial gradient styles", () => {
+		const linear = createDefaultFill("linear-gradient");
+		const radial = createDefaultFill("radial-gradient");
+
+		expect(getCardFillStyle(linear)).toEqual({
+			backgroundImage: "linear-gradient(135deg, #FFFDF8 0%, #111111 100%)",
+		});
+		expect(getCardFillStyle(radial)).toEqual({
+			backgroundImage:
+				"radial-gradient(circle at 50% 50%, #FFFDF8 0%, #111111 100%)",
+		});
+	});
+
+	it.each([
+		"paper",
+		"fluted-glass",
+		"halftone",
+		"halftone-cmyk",
+	] as const)("creates serializable %s texture settings", (texture) => {
+		const fill = createDefaultTextureFill(texture);
+
+		expect(fill).toMatchObject({ type: "texture", texture });
+		expect(() => JSON.stringify(fill)).not.toThrow();
+	});
+
+	it("creates image as a fill rather than a texture", () => {
+		const fill = createDefaultFill("image");
+
+		expect(fill).toMatchObject({
+			type: "image",
+			opacity: 0.35,
+			settings: { image: "/splash.webp" },
+		});
+		expect(getCardFillStyle(fill)).toEqual({});
+	});
+});
+
 describe("editor store", () => {
 	beforeEach(() => {
 		useEditorStore.getState().resetEditor();
@@ -40,7 +82,12 @@ describe("editor store", () => {
 			name: "Untitled Card",
 			width: 560,
 			height: 320,
-			settings: { aspectRatio: "business-card" },
+			settings: {
+				aspectRatio: "business-card",
+				fill: { type: "solid", color: "#FFFDF8" },
+				texture: null,
+				borderRadius: 10,
+			},
 		});
 		expect(selectedCardId).toBe(cards[0]?.id);
 	});
@@ -112,17 +159,21 @@ describe("editor store", () => {
 		expect(selectedCardId).toBe(cards[1]?.id);
 	});
 
-	it("updates card fields", () => {
+	it("updates structural card fields and appearance settings", () => {
 		const card = getCardAt(useEditorStore.getState().cards, 0);
 
-		useEditorStore.getState().updateCard(card.id, {
-			name: "Poster",
-			background: "#111111",
+		useEditorStore.getState().updateCard(card.id, { name: "Poster" });
+		useEditorStore.getState().updateCardSettings(card.id, {
+			fill: { type: "solid", color: "#111111" },
+			borderRadius: 24,
 		});
 
 		expect(useEditorStore.getState().cards[0]).toMatchObject({
 			name: "Poster",
-			background: "#111111",
+			settings: {
+				fill: { type: "solid", color: "#111111" },
+				borderRadius: 24,
+			},
 		});
 	});
 

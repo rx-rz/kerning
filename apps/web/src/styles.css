@@ -2,45 +2,78 @@
 @plugin '@tailwindcss/typography';
 @import 'tw-animate-css';
 
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  src: url('/fonts/schibsted-grotesk-400.ttf') format('truetype');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  src: url('/fonts/schibsted-grotesk-500.ttf') format('truetype');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  src: url('/fonts/schibsted-grotesk-600.ttf') format('truetype');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 600;
+}
+
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  src: url('/fonts/schibsted-grotesk-700.ttf') format('truetype');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 700;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  font-family: Inter, sans-serif;
-  font-feature-settings: "liga" 1, "calt" 1;
   color-scheme: light;
-
   --grid-size: 22px;
+  /* PRIMARY ACCENT */
+  /* --accent: #4457FD;
+  --accent-hover: #5A6BFF; */
+  --accent-soft: rgba(68, 87, 253, 0.16);
+  --accent-faint: rgba(68, 87, 253, 0.08);
 
-  /* ACCENT */
-  --accent: #141414;
-  --accent-hover: #2A2A2A;
-
-  --accent-soft: rgba(20, 20, 20, 0.08);
-  --accent-faint: rgba(20, 20, 20, 0.04);
+  /* SIGNAL */
+  --accent: #4457FD;
+  --accent-hover: #5A6BFF;
+  --signal-soft: rgba(254, 213, 3, 0.18);
+  --signal-faint: rgba(254, 213, 3, 0.08);
 
   /* BASE */
-  --bg: #FCFCFC;
+  --bg: #FFFFFF;
   --paper: #FFFFFF;
-  --paper-soft: #FAFAFA;
-  --paper-deep: #F3F3F3;
+  --paper-soft: #F5F5F5;
+  --paper-deep: #E9E9E9;
   --surface: rgba(255, 255, 255, 0.88);
 
   /* TEXT */
-  --ink: #111111;
-  --ink-rgb: 17, 17, 17;
+  --ink: #141414;
+  --ink-rgb: 20, 20, 20;
 
-  --co-muted: rgba(17, 17, 17, 0.68);
-  --subtle: rgba(17, 17, 17, 0.48);
-  --faint: rgba(17, 17, 17, 0.28);
+  --co-muted: rgba(20, 20, 20, 0.72);
+  --subtle: rgba(20, 20, 20, 0.52);
+  --faint: rgba(20, 20, 20, 0.32);
 
   /* BORDERS */
-  --hairline: rgba(17, 17, 17, 0.08);
-  --hairline-soft: rgba(17, 17, 17, 0.04);
-  --hole-line: rgba(17, 17, 17, 0.12);
+  --hairline: rgba(20, 20, 20, 0.10);
+  --hairline-soft: rgba(20, 20, 20, 0.06);
+  --hole-line: rgba(20, 20, 20, 0.12);
 
   /* COMPONENTS */
-  --component: #FAFAFA;
-  --component-deep: #F2F2F2;
+  --component: #F1F1F1;
+  --component-deep: #E5E5E5;
   --component-inset: #FFFFFF;
 
   /* SURFACES */
@@ -48,21 +81,21 @@
   --surface-wash: var(--paper-soft);
   --surface-head: var(--paper-deep);
 
-  --surface-check: #F7F7F7;
+  --surface-check: #F8F8F8;
 
-  --surface-glass: rgba(255, 255, 255, 0.75);
-  --surface-glass-strong: rgba(255, 255, 255, 0.92);
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --surface-glass-strong: rgba(255, 255, 255, 0.9);
 
   /* LINES */
-  --line-hair: rgba(17, 17, 17, 0.08);
-  --line-strong: rgba(17, 17, 17, 0.92);
+  --line-hair: rgba(20, 20, 20, 0.12);
+  --line-strong: rgba(20, 20, 20, 0.88);
 
-  --grid-line: rgba(17, 17, 17, 0.05);
+  --grid-line: rgba(20, 20, 20, 0.08);
 
   /* SEMANTIC */
-  --success: #2F8F5B;
-  --warn: #C6A700;
-  --danger: #D14343;
+  --success: #21935B;
+  --warn: var(--signal);
+  --danger: #E5484D;
 
   /* SHADCN */
   --background: var(--bg);
@@ -90,34 +123,29 @@
 
   --border: var(--hairline);
   --input: var(--hairline);
-  --ring: #141414;
+  --ring: var(--accent);
 
   /* CHARTS */
-  --chart-1: #222222;
-  --chart-2: #555555;
-  --chart-3: #888888;
-  --chart-4: #BBBBBB;
-  --chart-5: #DDDDDD;
+  --chart-1: #4457FD;
+  --chart-2: #21935B;
+  --chart-3: #FED503;
+  --chart-4: #E5484D;
+  --chart-5: #8B8B8B;
 
   /* SIDEBAR */
-  --sidebar: #FAFAFA;
-  --sidebar-foreground: var(--ink);
+  --sidebar: #141414;
+  --sidebar-foreground: #FFFFFF;
 
   --sidebar-primary: var(--accent);
   --sidebar-primary-foreground: #FFFFFF;
 
-  --sidebar-accent: rgba(17, 17, 17, 0.04);
-  --sidebar-accent-foreground: var(--ink);
+  --sidebar-accent: rgba(255, 255, 255, 0.06);
+  --sidebar-accent-foreground: #FFFFFF;
 
-  --sidebar-border: var(--hairline);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: var(--accent);
 
   --radius: 0.5rem;
-}
-@supports (font-variation-settings: normal) {
-  :root {
-    font-family: InterVariable, sans-serif;
-  }
 }
 
 .dark {
@@ -224,8 +252,8 @@
 }
 
 @theme inline {
-  --font-sans: 'InterVariable', 'Inter', sans-serif;
-  --font-mono: 'InterVariable', 'Inter', sans-serif;
+  --font-sans: 'Schibsted Grotesk', sans-serif;
+  --font-mono: 'Schibsted Grotesk', sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);

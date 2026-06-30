@@ -108,6 +108,53 @@ describe("editor components", () => {
 		).toBeTruthy();
 	});
 
+	it("updates the card solid fill from the inspector", () => {
+		renderEditorParts();
+
+		fireEvent.change(screen.getByLabelText("Card fill hex code"), {
+			target: { value: "#123456" },
+		});
+
+		expect(useEditorStore.getState().cards[0]?.settings.fill).toEqual({
+			type: "solid",
+			color: "#123456",
+		});
+	});
+
+	it("layers texture independently from the selected fill", () => {
+		renderEditorParts();
+
+		fireEvent.click(screen.getByRole("radio", { name: "Linear" }));
+		fireEvent.click(screen.getByRole("radio", { name: "Paper" }));
+
+		expect(useEditorStore.getState().cards[0]?.settings).toMatchObject({
+			fill: { type: "linear-gradient" },
+			texture: { type: "texture", texture: "paper", opacity: 0.35 },
+		});
+		expect(screen.getByRole("radio", { name: "Linear" })).toHaveProperty(
+			"checked",
+			true,
+		);
+		expect(screen.getByRole("radio", { name: "Paper" })).toHaveProperty(
+			"checked",
+			true,
+		);
+	});
+
+	it("offers image as a fill instead of a texture", () => {
+		renderEditorParts();
+
+		const imageChoices = screen.getAllByRole("radio", { name: "Image" });
+		expect(imageChoices).toHaveLength(1);
+		fireEvent.click(imageChoices[0] as HTMLElement);
+
+		expect(useEditorStore.getState().cards[0]?.settings).toMatchObject({
+			fill: { type: "image", settings: { image: "/splash.webp" } },
+			texture: null,
+		});
+		expect(screen.getByLabelText("Image source")).toBeTruthy();
+	});
+
 	it("edits multiline text without changing its container geometry", () => {
 		renderEditorParts();
 
@@ -329,7 +376,17 @@ describe("editor components", () => {
 			EDITOR_SESSION_STORAGE_KEY,
 			JSON.stringify({
 				state: {
-					cards: [{ ...card, name: "Persisted Card", width: 900, height: 800 }],
+					cards: [
+						{
+							...card,
+							name: "Persisted Card",
+							width: 900,
+							height: 800,
+							settings: { aspectRatio: card.settings.aspectRatio },
+							background: "#AABBCC",
+							borderRadius: 18,
+						},
+					],
 					selectedCardId: card.id,
 				},
 				version: 0,
@@ -342,7 +399,15 @@ describe("editor components", () => {
 			name: "Persisted Card",
 			width: 640,
 			height: 640,
+			settings: {
+				fill: { type: "solid", color: "#AABBCC" },
+				borderRadius: 18,
+			},
 		});
+		expect(useEditorStore.getState().cards[0]).not.toHaveProperty("background");
+		expect(useEditorStore.getState().cards[0]).not.toHaveProperty(
+			"borderRadius",
+		);
 		expect(useEditorStore.getState().selectedCardId).toBe(card.id);
 
 		useEditorStore.getState().updateCard(card.id, { name: "Saved Card" });

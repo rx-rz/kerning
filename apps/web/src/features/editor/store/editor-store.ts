@@ -2,19 +2,22 @@ import { createId } from "@paralleldrive/cuid2";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { mutative } from "zustand-mutative";
-
+import { createDefaultFill } from "#/features/editor/lib/card-fill";
 import {
 	clampCardHeight,
 	clampCardWidth,
 	getCardSizeFromAspectRatio,
 } from "#/features/editor/lib/card-size";
 import type {
+	CardFill,
 	CardSettings,
 	EditorCard,
 	EditorNode,
 	EditorNodePatch,
+	ImageCardFill,
 	ImageNode,
 	TextNode,
+	TextureCardFill,
 } from "#/features/editor/types";
 
 type EditorState = {
@@ -54,9 +57,12 @@ function createDefaultCard(name = "Untitled Card"): EditorCard {
 		name,
 		width,
 		height,
-		settings: { aspectRatio: "business-card" },
-		background: "#fffdf8",
-		borderRadius: 10,
+		settings: {
+			aspectRatio: "business-card",
+			fill: { type: "solid", color: "#FFFDF8" },
+			texture: null,
+			borderRadius: 10,
+		},
 		nodes: [],
 	};
 }
@@ -145,6 +151,83 @@ function normalizeCard(card: EditorCard): EditorCard {
 				clampedCard,
 			),
 		),
+	};
+}
+
+type LegacyTextureFill = {
+	type: "texture";
+	texture: TextureCardFill["texture"] | "image-dithering" | "water" | "dither";
+	opacity?: number;
+	settings: unknown;
+};
+
+type LegacyEditorCard = Omit<EditorCard, "settings"> & {
+	background?: string;
+	borderRadius?: number;
+	settings: Partial<Omit<CardSettings, "fill">> &
+		Pick<CardSettings, "aspectRatio"> & {
+			fill?: CardFill | LegacyTextureFill;
+		};
+};
+
+function migrateTexture(
+	texture: LegacyTextureFill | TextureCardFill | null | undefined,
+): TextureCardFill | null {
+	if (!texture || texture.texture === "water") return null;
+	if (texture.texture === "dither" || texture.texture === "image-dithering")
+		return null;
+
+	return {
+		...texture,
+		opacity: texture.opacity ?? 0.35,
+	} as TextureCardFill;
+}
+
+function migrateImageFill(texture: LegacyTextureFill): ImageCardFill {
+	const defaultFill = createDefaultFill("image") as ImageCardFill;
+	const settings =
+		typeof texture.settings === "object" && texture.settings !== null
+			? texture.settings
+			: {};
+
+	return {
+		...defaultFill,
+		opacity: texture.opacity ?? defaultFill.opacity,
+		settings: { ...defaultFill.settings, ...settings },
+	};
+}
+
+function migrateCardAppearance(card: LegacyEditorCard): EditorCard {
+	const {
+		background,
+		borderRadius,
+		settings: legacySettings,
+		...structuralCard
+	} = card;
+	const legacyTexture =
+		legacySettings.texture ??
+		(legacySettings.fill?.type === "texture" ? legacySettings.fill : null);
+	const imageTexture =
+		legacyTexture?.texture === "image-dithering" ||
+		legacyTexture?.texture === "dither"
+			? legacyTexture
+			: null;
+
+	return {
+		...structuralCard,
+		settings: {
+			aspectRatio: legacySettings.aspectRatio,
+			fill: imageTexture
+				? migrateImageFill(imageTexture)
+				: legacySettings.fill?.type !== "texture"
+					? (legacySettings.fill ?? {
+							type: "solid",
+							color: background ?? "#FFFDF8",
+						})
+					: { type: "solid", color: background ?? "#FFFDF8" },
+			texture: migrateTexture(legacyTexture),
+			borderRadius: legacySettings.borderRadius ?? borderRadius ?? 10,
+		},
 	};
 }
 
@@ -296,6 +379,7 @@ export const useEditorStore = create<EditorState>()(
 		})),
 		{
 			name: EDITOR_SESSION_STORAGE_KEY,
+			version: 3,
 			storage: createJSONStorage(() =>
 				typeof window === "undefined" ? fallbackStorage : window.sessionStorage,
 			),
@@ -304,6 +388,16 @@ export const useEditorStore = create<EditorState>()(
 				selectedCardId,
 				selectedNodeId,
 			}),
+			migrate: (persistedState) => {
+				const state = persistedState as Partial<EditorState>;
+
+				return {
+					...state,
+					cards: state.cards?.map((card) =>
+						migrateCardAppearance(card as LegacyEditorCard),
+					),
+				};
+			},
 			merge: (persistedState, currentState) => {
 				const persistedEditorState = persistedState as Partial<EditorState>;
 

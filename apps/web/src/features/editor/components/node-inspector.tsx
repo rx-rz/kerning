@@ -1,7 +1,8 @@
 import { Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "#/components/ui/button";
+import { ColorField } from "#/components/ui/color-field";
 import { Field, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import {
@@ -41,8 +42,6 @@ const FONT_WEIGHTS = [
 	{ value: 800, label: "Extra bold" },
 	{ value: 900, label: "Black" },
 ] as const;
-
-const HEX_COLOR_PATTERN = /^#?[\da-f]{6}$/i;
 
 export function NodeInspector({ card, node }: NodeInspectorProps) {
 	const updateNode = useEditorStore((state) => state.updateNode);
@@ -195,68 +194,14 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 				</Field>
 			</div>
 			<ColorField
+				label="Color"
+				ariaLabel="Text color"
+				pickerAriaLabel="Text color picker"
 				value={node.color}
 				onChange={(color) => updateNode(cardId, node.id, { color })}
 			/>
 		</section>
 	);
-}
-
-function ColorField({
-	value,
-	onChange,
-}: {
-	value: string;
-	onChange: (value: string) => void;
-}) {
-	const [draft, setDraft] = useState(value);
-	const normalizedValue = normalizeHexColor(value) ?? "#000000";
-	const isDraftValid = normalizeHexColor(draft) !== null;
-
-	useEffect(() => setDraft(value), [value]);
-
-	function updateDraft(nextDraft: string) {
-		setDraft(nextDraft);
-		const color = normalizeHexColor(nextDraft);
-		if (color) onChange(color);
-	}
-
-	return (
-		<Field className="space-y-1">
-			<FieldLabel htmlFor="node-color-hex">Color</FieldLabel>
-			<div className="flex gap-2">
-				<Input
-					type="color"
-					aria-label="Text color picker"
-					className="size-12 shrink-0 cursor-pointer p-1"
-					value={normalizedValue}
-					onChange={(event) => onChange(event.target.value.toUpperCase())}
-				/>
-				<Input
-					id="node-color-hex"
-					aria-label="Text color hex code"
-					aria-invalid={!isDraftValid}
-					className="font-mono uppercase"
-					inputMode="text"
-					maxLength={7}
-					placeholder="#111111"
-					spellCheck={false}
-					value={draft}
-					onChange={(event) => updateDraft(event.target.value)}
-					onBlur={() => {
-						if (!isDraftValid) setDraft(value);
-					}}
-				/>
-			</div>
-		</Field>
-	);
-}
-
-function normalizeHexColor(value: string) {
-	const trimmedValue = value.trim();
-	if (!HEX_COLOR_PATTERN.test(trimmedValue)) return null;
-
-	return `#${trimmedValue.replace(/^#/, "").toUpperCase()}`;
 }
 
 function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {

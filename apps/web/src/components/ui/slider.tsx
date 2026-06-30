@@ -161,7 +161,7 @@ function Slider({
           <SliderPrimitive.Range
             data-slot="slider-range"
             className={cn(
-              "absolute h-full bg-primary/75 data-[orientation=vertical]:w-full",
+              "absolute h-full bg-primary/15 data-[orientation=vertical]:w-full",
               "group-data-[snapping=true]/slider:transition-[width,height] group-data-[snapping=true]/slider:duration-350 group-data-[snapping=true]/slider:ease-[cubic-bezier(.2,.8,.2,1)]",
             )}
           />
