@@ -39,8 +39,15 @@ export type RadialGradientCardFill = {
 
 export type ImageCardFill = {
 	type: "image";
+	imageId: string | null;
 	opacity: number;
-	settings: ImageDitheringSettings;
+	settings: ImageFillSettings;
+};
+
+export type ImageFillSettings = {
+	backgroundSize: "cover" | "contain" | "auto";
+	originX: number;
+	originY: number;
 };
 
 type TextureFill<TTexture extends string, TSettings> = {
@@ -70,18 +77,6 @@ export type FlutedGlassSettings = {
 	distortion: number;
 	blur: number;
 	highlights: number;
-};
-
-export type ImageDitheringSettings = {
-	image: string;
-	colorBack: string;
-	colorFront: string;
-	colorHighlight: string;
-	ditherType: "random" | "2x2" | "4x4" | "8x8";
-	size: number;
-	colorSteps: number;
-	originalColors: boolean;
-	inverted: boolean;
 };
 
 export type HalftoneTextureSettings = {

@@ -62,8 +62,9 @@ describe("card fills", () => {
 
 		expect(fill).toMatchObject({
 			type: "image",
+			imageId: null,
 			opacity: 0.35,
-			settings: { image: "/splash.webp" },
+			settings: { backgroundSize: "cover", originX: 50, originY: 50 },
 		});
 		expect(getCardFillStyle(fill)).toEqual({});
 	});

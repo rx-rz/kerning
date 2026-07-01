@@ -1,11 +1,10 @@
 import { createId } from "@paralleldrive/cuid2";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
+import { ChevronDown, Plus, Trash2, Upload } from "lucide-react";
+import { useId, useRef, useState } from "react";
 
 import { Button } from "#/components/ui/button";
 import { ColorField } from "#/components/ui/color-field";
-import { Field, FieldLabel } from "#/components/ui/field";
-import { Input } from "#/components/ui/input";
+import { FieldLabel } from "#/components/ui/field";
 import {
 	Select,
 	SelectContent,
@@ -14,6 +13,7 @@ import {
 	SelectValue,
 } from "#/components/ui/select";
 import { Slider } from "#/components/ui/slider";
+import { deleteEditorImage, replaceEditorImage } from "#/db/image-db";
 import {
 	createDefaultFill,
 	createDefaultTextureFill,
@@ -54,7 +54,13 @@ export function CardFillInspector({
 				label="Fill"
 				value={fill.type}
 				options={FILL_TYPES}
-				onChange={(type) => onChange(createDefaultFill(type))}
+				onChange={(type) => {
+					if (type === fill.type) return;
+					if (fill.type === "image" && fill.imageId) {
+						void deleteEditorImage(fill.imageId);
+					}
+					onChange(createDefaultFill(type));
+				}}
 			/>
 
 			{fill.type === "solid" ? (
@@ -242,66 +248,91 @@ function ImageFillSettings({
 	fill: ImageCardFill;
 	onChange: (fill: ImageCardFill) => void;
 }) {
-	const update = (patch: Partial<ImageCardFill["settings"]>) =>
-		onChange({ ...fill, settings: { ...fill.settings, ...patch } });
+	const imageInputRef = useRef<HTMLInputElement>(null);
+	const [isUploading, setIsUploading] = useState(false);
+
+	async function uploadImage(file: File) {
+		setIsUploading(true);
+		try {
+			const imageId = await replaceEditorImage(file, fill.imageId);
+			onChange({ ...fill, imageId });
+		} finally {
+			setIsUploading(false);
+		}
+	}
 
 	return (
 		<>
-			<Field className="space-y-1">
-				<FieldLabel htmlFor="fill-image-source">Image source</FieldLabel>
-				<Input
-					id="fill-image-source"
-					value={fill.settings.image}
-					onChange={(event) => update({ image: event.target.value })}
-				/>
-			</Field>
-			<ColorPair
-				fill={fill}
-				labels={["Background", "Ink"]}
-				keys={["colorBack", "colorFront"]}
-				onChange={update}
-			/>
-			<ColorField
-				label="Highlight"
-				value={fill.settings.colorHighlight}
-				onChange={(colorHighlight) => update({ colorHighlight })}
+			<Button
+				type="button"
+				variant="outline"
+				className="w-full"
+				disabled={isUploading}
+				onClick={() => imageInputRef.current?.click()}
+			>
+				<Upload />
+				{isUploading
+					? "Uploading…"
+					: fill.imageId
+						? "Replace image"
+						: "Upload image"}
+			</Button>
+			<input
+				ref={imageInputRef}
+				type="file"
+				accept="image/*"
+				aria-label="Upload image fill"
+				className="sr-only"
+				disabled={isUploading}
+				onChange={(event) => {
+					const file = event.target.files?.[0];
+					if (file) void uploadImage(file);
+					event.target.value = "";
+				}}
 			/>
 			<OptionField
-				label="Dither"
-				value={fill.settings.ditherType}
-				options={["random", "2x2", "4x4", "8x8"]}
-				onChange={(ditherType) =>
-					update({
-						ditherType: ditherType as typeof fill.settings.ditherType,
+				label="Background size"
+				value={fill.settings.backgroundSize}
+				options={["cover", "contain", "auto"]}
+				onChange={(backgroundSize) =>
+					onChange({
+						...fill,
+						settings: {
+							...fill.settings,
+							backgroundSize:
+								backgroundSize as ImageCardFill["settings"]["backgroundSize"],
+						},
 					})
 				}
 			/>
-			<RangeField
-				label="Pixel size"
-				value={fill.settings.size}
-				min={0.5}
-				max={20}
-				step={0.5}
-				onChange={(size) => update({ size })}
-			/>
-			<RangeField
-				label="Color steps"
-				value={fill.settings.colorSteps}
-				min={1}
-				max={10}
-				step={1}
-				onChange={(colorSteps) => update({ colorSteps })}
-			/>
-			<ToggleField
-				label="Original colors"
-				checked={fill.settings.originalColors}
-				onChange={(originalColors) => update({ originalColors })}
-			/>
-			<ToggleField
-				label="Invert"
-				checked={fill.settings.inverted}
-				onChange={(inverted) => update({ inverted })}
-			/>
+			<div className="grid grid-cols-2 gap-2">
+				<RangeField
+					label="Origin X"
+					value={fill.settings.originX}
+					min={0}
+					max={100}
+					step={1}
+					onChange={(originX) =>
+						onChange({
+							...fill,
+							settings: { ...fill.settings, originX },
+						})
+					}
+				/>
+				<RangeField
+					label="Origin Y"
+					value={fill.settings.originY}
+					min={0}
+					max={100}
+					step={1}
+					onChange={(originY) =>
+						onChange({
+							...fill,
+							settings: { ...fill.settings, originY },
+						})
+					}
+				/>
+			</div>
 		</>
 	);
 }
@@ -310,7 +341,7 @@ function TextureSettings({
 	fill,
 	onChange,
 }: {
-	fill: TextureCardFill | ImageCardFill;
+	fill: TextureCardFill;
 	onChange: (fill: TextureCardFill) => void;
 }) {
 	if (fill.texture === "paper") {

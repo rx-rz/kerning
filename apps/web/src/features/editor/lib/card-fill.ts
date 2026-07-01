@@ -4,7 +4,7 @@ import type {
 	GradientStop,
 	HalftoneCmykTextureSettings,
 	HalftoneTextureSettings,
-	ImageDitheringSettings,
+	ImageFillSettings,
 	PaperTextureSettings,
 	TextureCardFill,
 } from "#/features/editor/types";
@@ -36,16 +36,10 @@ export const DEFAULT_FLUTED_GLASS_SETTINGS: FlutedGlassSettings = {
 	highlights: 0.1,
 };
 
-export const DEFAULT_IMAGE_DITHERING_SETTINGS: ImageDitheringSettings = {
-	image: "/splash.webp",
-	colorBack: "#111111",
-	colorFront: "#F7F5EF",
-	colorHighlight: "#FFFFFF",
-	ditherType: "4x4",
-	size: 2,
-	colorSteps: 2,
-	originalColors: false,
-	inverted: false,
+export const DEFAULT_IMAGE_SETTINGS: ImageFillSettings = {
+	backgroundSize: "cover",
+	originX: 50,
+	originY: 50,
 };
 
 export const DEFAULT_HALFTONE_SETTINGS: HalftoneTextureSettings = {
@@ -91,8 +85,9 @@ export function createDefaultFill(type: CardFill["type"]): CardFill {
 		case "image":
 			return {
 				type,
+				imageId: null,
 				opacity: 0.35,
-				settings: { ...DEFAULT_IMAGE_DITHERING_SETTINGS },
+				settings: { ...DEFAULT_IMAGE_SETTINGS },
 			};
 		default:
 			return { type: "solid", color: "#FFFDF8" };

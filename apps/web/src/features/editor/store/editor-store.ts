@@ -183,17 +183,16 @@ function migrateTexture(
 	} as TextureCardFill;
 }
 
-function migrateImageFill(texture: LegacyTextureFill): ImageCardFill {
+function migrateImageFill(fill: {
+	imageId?: string | null;
+	opacity?: number;
+}): ImageCardFill {
 	const defaultFill = createDefaultFill("image") as ImageCardFill;
-	const settings =
-		typeof texture.settings === "object" && texture.settings !== null
-			? texture.settings
-			: {};
 
 	return {
 		...defaultFill,
-		opacity: texture.opacity ?? defaultFill.opacity,
-		settings: { ...defaultFill.settings, ...settings },
+		imageId: fill.imageId ?? null,
+		opacity: fill.opacity ?? defaultFill.opacity,
 	};
 }
 
@@ -219,12 +218,14 @@ function migrateCardAppearance(card: LegacyEditorCard): EditorCard {
 			aspectRatio: legacySettings.aspectRatio,
 			fill: imageTexture
 				? migrateImageFill(imageTexture)
-				: legacySettings.fill?.type !== "texture"
-					? (legacySettings.fill ?? {
-							type: "solid",
-							color: background ?? "#FFFDF8",
-						})
-					: { type: "solid", color: background ?? "#FFFDF8" },
+				: legacySettings.fill?.type === "image"
+					? migrateImageFill(legacySettings.fill)
+					: legacySettings.fill?.type !== "texture"
+						? (legacySettings.fill ?? {
+								type: "solid",
+								color: background ?? "#FFFDF8",
+							})
+						: { type: "solid", color: background ?? "#FFFDF8" },
 			texture: migrateTexture(legacyTexture),
 			borderRadius: legacySettings.borderRadius ?? borderRadius ?? 10,
 		},
@@ -379,7 +380,7 @@ export const useEditorStore = create<EditorState>()(
 		})),
 		{
 			name: EDITOR_SESSION_STORAGE_KEY,
-			version: 3,
+			version: 5,
 			storage: createJSONStorage(() =>
 				typeof window === "undefined" ? fallbackStorage : window.sessionStorage,
 			),

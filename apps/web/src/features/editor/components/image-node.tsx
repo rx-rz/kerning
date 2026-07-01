@@ -1,8 +1,9 @@
 import { ImageIcon } from "lucide-react";
 import type { PointerEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
-import { getEditorImage, replaceEditorImage } from "#/db/image-db";
+import { replaceEditorImage } from "#/db/image-db";
+import { useStoredImageUrl } from "#/features/editor/hooks/use-stored-image-url";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 import type { ImageNode as ImageNodeData } from "#/features/editor/types";
 
@@ -88,31 +89,4 @@ export function ImageNode({
 			/>
 		</>
 	);
-}
-
-function useStoredImageUrl(imageId: string | null) {
-	const [objectUrl, setObjectUrl] = useState("");
-
-	useEffect(() => {
-		if (!imageId) {
-			setObjectUrl("");
-			return;
-		}
-
-		let isActive = true;
-		let nextObjectUrl = "";
-
-		void getEditorImage(imageId).then((image) => {
-			if (!image || !isActive) return;
-			nextObjectUrl = URL.createObjectURL(image.blob);
-			setObjectUrl(nextObjectUrl);
-		});
-
-		return () => {
-			isActive = false;
-			if (nextObjectUrl) URL.revokeObjectURL(nextObjectUrl);
-		};
-	}, [imageId]);
-
-	return objectUrl;
 }

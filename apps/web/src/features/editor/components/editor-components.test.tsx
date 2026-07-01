@@ -141,7 +141,7 @@ describe("editor components", () => {
 		);
 	});
 
-	it("offers image as a fill instead of a texture", () => {
+	it("offers image as an upload-based fill instead of a texture", async () => {
 		renderEditorParts();
 
 		const imageChoices = screen.getAllByRole("radio", { name: "Image" });
@@ -149,10 +149,34 @@ describe("editor components", () => {
 		fireEvent.click(imageChoices[0] as HTMLElement);
 
 		expect(useEditorStore.getState().cards[0]?.settings).toMatchObject({
-			fill: { type: "image", settings: { image: "/splash.webp" } },
+			fill: {
+				type: "image",
+				imageId: null,
+				settings: { backgroundSize: "cover", originX: 50, originY: 50 },
+			},
 			texture: null,
 		});
-		expect(screen.getByLabelText("Image source")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Upload image" })).toBeTruthy();
+		expect(screen.queryByText("Dither")).toBeNull();
+		expect(screen.queryByText("Color steps")).toBeNull();
+		expect(screen.queryByText("Original colors")).toBeNull();
+		expect(screen.queryByText("Background")).toBeNull();
+		expect(screen.queryByText("Ink")).toBeNull();
+		expect(screen.queryByText("Highlight")).toBeNull();
+		expect(screen.queryByText("Pixel size")).toBeNull();
+		expect(screen.getByText("Background size")).toBeTruthy();
+
+		const upload = screen.getByLabelText("Upload image fill");
+		const file = new File(["image"], "cover.png", { type: "image/png" });
+		await act(async () => {
+			fireEvent.change(upload, { target: { files: [file] } });
+		});
+
+		expect(imageDbMocks.replaceEditorImage).toHaveBeenCalledWith(file, null);
+		expect(useEditorStore.getState().cards[0]?.settings.fill).toMatchObject({
+			type: "image",
+			imageId: "replacement-image-id",
+		});
 	});
 
 	it("edits multiline text without changing its container geometry", () => {
@@ -416,6 +440,49 @@ describe("editor components", () => {
 		);
 
 		expect(savedSession.state.cards[0]).toMatchObject({ name: "Saved Card" });
+	});
+
+	it("removes legacy dithering settings from saved image fills", async () => {
+		const card = useEditorStore.getState().cards[0];
+		if (!card) throw new Error("Expected a default card");
+
+		useEditorStore.setState({ cards: [], selectedCardId: null });
+		window.sessionStorage.setItem(
+			EDITOR_SESSION_STORAGE_KEY,
+			JSON.stringify({
+				state: {
+					cards: [
+						{
+							...card,
+							settings: {
+								...card.settings,
+								fill: {
+									type: "image",
+									imageId: "stored-image-id",
+									opacity: 0.7,
+									settings: {
+										image: "/splash.webp",
+										ditherType: "4x4",
+										size: 2,
+									},
+								},
+							},
+						},
+					],
+					selectedCardId: card.id,
+				},
+				version: 4,
+			}),
+		);
+
+		await useEditorStore.persist.rehydrate();
+
+		expect(useEditorStore.getState().cards[0]?.settings.fill).toEqual({
+			type: "image",
+			imageId: "stored-image-id",
+			opacity: 0.7,
+			settings: { backgroundSize: "cover", originX: 50, originY: 50 },
+		});
 	});
 
 	it("adds and resets cards from the preview controls", () => {

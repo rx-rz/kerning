@@ -20,7 +20,7 @@ export function EditorInspector({ onClose }: EditorInspectorProps) {
 	);
 
 	return (
-		<aside className="fixed top-2.5 right-2.5 bottom-2.5 z-40 flex min-h-0 max-h-220  flex-col pt-3 overflow-hidden rounded-2xl border bg-surface-wash w-[min(20rem,calc(100vw-1.25rem))] shadow-inset  backdrop-blur-3xl">
+		<aside className="fixed top-1 right-1 bottom-2.5 z-40 flex min-h-0 max-h-dvh  flex-col pt-3 overflow-hidden rounded-2xl border bg-surface-wash w-[min(25rem,calc(100vw-1.25rem))] shadow-inset  backdrop-blur-3xl">
 			<Button
 				type="button"
 				aria-label="Close inspector"

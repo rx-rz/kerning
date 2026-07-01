@@ -1,5 +1,6 @@
 import { ImagePlus, Settings2, Trash2, Type } from "lucide-react";
 import { lazy, Suspense } from "react";
+import { CardImageFill } from "#/features/editor/components/card-image-fill";
 import { EditorNode } from "#/features/editor/components/editor-node";
 import { getCardFillStyle } from "#/features/editor/lib/card-fill";
 import { useEditorStore } from "#/features/editor/store/editor-store";
@@ -58,9 +59,7 @@ export function EditorCard({
 				}}
 			>
 				{card.settings.fill.type === "image" ? (
-					<Suspense fallback={null}>
-						<CardTextureFill fill={card.settings.fill} />
-					</Suspense>
+					<CardImageFill fill={card.settings.fill} />
 				) : null}
 				{card.settings.texture ? (
 					<Suspense fallback={null}>

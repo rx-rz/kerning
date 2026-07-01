@@ -2,20 +2,15 @@ import {
 	FlutedGlass,
 	HalftoneCmyk,
 	HalftoneDots,
-	ImageDithering,
 	PaperTexture,
 } from "@paper-design/shaders-react";
 
-import type { ImageCardFill, TextureCardFill } from "#/features/editor/types";
+import type { TextureCardFill } from "#/features/editor/types";
 
 const SHADER_CLASS_NAME = "pointer-events-none absolute inset-0 size-full";
 const MAX_PIXEL_COUNT = 1_000_000;
 
-export function CardTextureFill({
-	fill,
-}: {
-	fill: TextureCardFill | ImageCardFill;
-}) {
+export function CardTextureFill({ fill }: { fill: TextureCardFill }) {
 	const sharedProps = {
 		"aria-hidden": true,
 		className: SHADER_CLASS_NAME,
@@ -27,18 +22,6 @@ export function CardTextureFill({
 			opacity: fill.opacity,
 		},
 	} as const;
-
-	if (fill.type === "image") {
-		const { ditherType, ...settings } = fill.settings;
-		return (
-			<ImageDithering
-				{...sharedProps}
-				{...settings}
-				fit="cover"
-				type={ditherType}
-			/>
-		);
-	}
 
 	switch (fill.texture) {
 		case "fluted-glass":
