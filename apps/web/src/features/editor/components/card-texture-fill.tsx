@@ -13,6 +13,7 @@ const MAX_PIXEL_COUNT = 1_000_000;
 export function CardTextureFill({ fill }: { fill: TextureCardFill }) {
 	const sharedProps = {
 		"aria-hidden": true,
+		"data-card-layer": "texture",
 		className: SHADER_CLASS_NAME,
 		maxPixelCount: MAX_PIXEL_COUNT,
 		minPixelRatio: 1,

@@ -53,18 +53,22 @@ export function EditorCard({
 					width: card.width,
 					height: card.height,
 					...getCardFillStyle(card.settings.fill),
-					borderRadius: card.settings.borderRadius,
+					opacity: card.settings.opacity,
+					filter: `blur(${card.settings.blur}px)`,
+					borderWidth: card.settings.borderWidth,
+					borderStyle: card.settings.borderStyle,
+					borderColor: card.settings.borderColor,
 					transform: `scale(${zoom})`,
 					transformOrigin: "top left",
 				}}
 			>
-				{card.settings.fill.type === "image" ? (
-					<CardImageFill fill={card.settings.fill} />
-				) : null}
 				{card.settings.texture ? (
 					<Suspense fallback={null}>
 						<CardTextureFill fill={card.settings.texture} />
 					</Suspense>
+				) : null}
+				{card.settings.fill.type === "image" ? (
+					<CardImageFill fill={card.settings.fill} />
 				) : null}
 				<button
 					type="button"

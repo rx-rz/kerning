@@ -1,3 +1,4 @@
+import { ColorField } from "#/components/ui/color-field";
 import { Field, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import {
@@ -7,6 +8,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import { Slider } from "#/components/ui/slider";
 import {
 	CardFillInspector,
 	CardTextureInspector,
@@ -130,20 +132,83 @@ export function CardInspector({ card }: CardInspectorProps) {
 			</InspectorSection>
 
 			<InspectorSection title="Appearance">
-				<NumberField
-					id="card-border-radius"
-					label="Border Radius"
+				<Slider
+					label="Opacity"
+					value={[card.settings.opacity]}
 					min={0}
-					value={card.settings.borderRadius}
-					onChange={(value) => {
-						const borderRadius = Number(value);
-						if (Number.isFinite(borderRadius)) {
-							updateCardSettings(card.id, {
-								borderRadius: Math.max(0, borderRadius),
-							});
-						}
+					max={1}
+					step={0.01}
+					showTicks={false}
+					snapToDeciles={false}
+					onValueChange={([opacity]) => {
+						if (opacity !== undefined) updateCardSettings(card.id, { opacity });
 					}}
 				/>
+				<Slider
+					label="Blur"
+					value={[card.settings.blur]}
+					min={0}
+					max={40}
+					step={1}
+					showTicks={false}
+					snapToDeciles={false}
+					onValueChange={([blur]) => {
+						if (blur !== undefined) updateCardSettings(card.id, { blur });
+					}}
+				/>
+				<div className="space-y-3 rounded-lg border border-border p-3">
+					<h4 className="text-xs font-semibold">Border</h4>
+					<NumberField
+						id="card-border-width"
+						label="Border Width"
+						min={0}
+						max={40}
+						value={card.settings.borderWidth}
+						onChange={(value) => {
+							const borderWidth = Number(value);
+							if (Number.isFinite(borderWidth)) {
+								updateCardSettings(card.id, {
+									borderWidth: Math.min(40, Math.max(0, borderWidth)),
+								});
+							}
+						}}
+					/>
+					<Field className="space-y-0">
+						<Select
+							value={card.settings.borderStyle}
+							onValueChange={(borderStyle) =>
+								updateCardSettings(card.id, {
+									borderStyle: borderStyle as typeof card.settings.borderStyle,
+								})
+							}
+						>
+							<SelectTrigger id="card-border-style" className="w-full">
+								<FieldLabel
+									className="pointer-events-none mr-auto"
+									htmlFor="card-border-style"
+								>
+									Style
+								</FieldLabel>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent align="end">
+								{["solid", "dashed", "dotted", "double"].map((style) => (
+									<SelectItem key={style} value={style}>
+										{style}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</Field>
+					<ColorField
+						label="Color"
+						ariaLabel="Border color"
+						value={card.settings.borderColor}
+						onChange={(borderColor) =>
+							updateCardSettings(card.id, { borderColor })
+						}
+					/>
+				</div>
 				<CardFillInspector
 					fill={card.settings.fill}
 					onChange={(fill) => updateCardSettings(card.id, { fill })}

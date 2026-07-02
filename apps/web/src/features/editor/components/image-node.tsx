@@ -26,6 +26,15 @@ export function ImageNode({
 	const [isReplacing, setIsReplacing] = useState(false);
 	const storedImageUrl = useStoredImageUrl(node.imageId);
 	const imageUrl = node.src || storedImageUrl;
+	const imagePosition = `${node.positionX}% ${node.positionY}%`;
+	const imageFilter = [
+		`brightness(${node.effects.brightness}%)`,
+		`contrast(${node.effects.contrast}%)`,
+		`saturate(${node.effects.saturation}%)`,
+		`blur(${node.effects.blur}px)`,
+		`grayscale(${node.effects.grayscale}%)`,
+		`sepia(${node.effects.sepia}%)`,
+	].join(" ");
 
 	async function replaceImage(file: File) {
 		setIsReplacing(true);
@@ -63,7 +72,14 @@ export function ImageNode({
 						className="pointer-events-none size-full"
 						src={imageUrl}
 						alt={node.alt}
-						style={{ objectFit: node.objectFit, opacity: node.opacity }}
+						style={{
+							objectFit: node.objectFit,
+							objectPosition: imagePosition,
+							transform: `scale(${node.zoom})`,
+							transformOrigin: imagePosition,
+							filter: imageFilter,
+							opacity: node.opacity,
+						}}
 						draggable={false}
 					/>
 				) : (

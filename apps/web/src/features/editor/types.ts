@@ -10,7 +10,11 @@ export type CardSettings = {
 	aspectRatio: CardAspectRatio;
 	fill: CardFill;
 	texture: TextureCardFill | null;
-	borderRadius: number;
+	opacity: number;
+	blur: number;
+	borderWidth: number;
+	borderStyle: "solid" | "dashed" | "dotted" | "double";
+	borderColor: string;
 };
 
 export type SolidCardFill = {
@@ -117,6 +121,8 @@ export type CardFill =
 	| ImageCardFill;
 
 export type FontType = "primary" | "sec1" | "sec2";
+export type TextAlignment = "left" | "center" | "right" | "justify";
+export type TextCasing = "none" | "uppercase" | "lowercase" | "capitalize";
 
 type BaseNode = {
 	id: string;
@@ -133,8 +139,10 @@ export type TextNode = BaseNode & {
 	fontSize: number;
 	fontWeight: number;
 	lineHeight: number;
+	letterSpacing: number;
 	color: string;
-	textAlign: "left" | "center" | "right";
+	textAlign: TextAlignment;
+	textCasing: TextCasing;
 };
 
 export type ImageNode = BaseNode & {
@@ -143,7 +151,20 @@ export type ImageNode = BaseNode & {
 	imageId: string | null;
 	alt: string;
 	objectFit: "cover" | "contain";
+	zoom: number;
+	positionX: number;
+	positionY: number;
+	effects: ImageEffects;
 	opacity: number;
+};
+
+export type ImageEffects = {
+	brightness: number;
+	contrast: number;
+	saturation: number;
+	blur: number;
+	grayscale: number;
+	sepia: number;
 };
 
 export type EditorNode = TextNode | ImageNode;

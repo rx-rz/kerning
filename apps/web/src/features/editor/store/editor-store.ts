@@ -61,7 +61,11 @@ function createDefaultCard(name = "Untitled Card"): EditorCard {
 			aspectRatio: "business-card",
 			fill: { type: "solid", color: "#FFFDF8" },
 			texture: null,
-			borderRadius: 10,
+			opacity: 1,
+			blur: 0,
+			borderWidth: 0,
+			borderStyle: "solid",
+			borderColor: "#000000",
 		},
 		nodes: [],
 	};
@@ -92,8 +96,10 @@ function createDefaultTextNode(card: EditorCard): TextNode {
 		fontSize: 20,
 		fontWeight: 500,
 		lineHeight: 1.1,
+		letterSpacing: 0,
 		color: "#111111",
 		textAlign: "left",
+		textCasing: "none",
 	};
 }
 
@@ -111,6 +117,17 @@ function createDefaultImageNode(card: EditorCard): ImageNode {
 		imageId: null,
 		alt: "",
 		objectFit: "cover",
+		zoom: 1,
+		positionX: 50,
+		positionY: 50,
+		effects: {
+			brightness: 100,
+			contrast: 100,
+			saturation: 100,
+			blur: 0,
+			grayscale: 0,
+			sepia: 0,
+		},
 		opacity: 1,
 	};
 }
@@ -139,15 +156,45 @@ function constrainNode(
 }
 
 function normalizeCard(card: EditorCard): EditorCard {
-	const clampedCard = clampCardDimensions({ ...card, nodes: card.nodes ?? [] });
+	const clampedCard = clampCardDimensions({
+		...card,
+		settings: {
+			...card.settings,
+			opacity: card.settings.opacity ?? 1,
+			blur: card.settings.blur ?? 0,
+			borderWidth: card.settings.borderWidth ?? 0,
+			borderStyle: card.settings.borderStyle ?? "solid",
+			borderColor: card.settings.borderColor ?? "#000000",
+		},
+		nodes: card.nodes ?? [],
+	});
 
 	return {
 		...clampedCard,
 		nodes: clampedCard.nodes.map((node) =>
 			constrainNode(
 				node.type === "image"
-					? { ...node, imageId: node.imageId ?? null }
-					: node,
+					? {
+							...node,
+							imageId: node.imageId ?? null,
+							zoom: node.zoom ?? 1,
+							positionX: node.positionX ?? 50,
+							positionY: node.positionY ?? 50,
+							effects: {
+								brightness: node.effects?.brightness ?? 100,
+								contrast: node.effects?.contrast ?? 100,
+								saturation: node.effects?.saturation ?? 100,
+								blur: node.effects?.blur ?? 0,
+								grayscale: node.effects?.grayscale ?? 0,
+								sepia: node.effects?.sepia ?? 0,
+							},
+						}
+					: {
+							...node,
+							letterSpacing: node.letterSpacing ?? 0,
+							textAlign: node.textAlign ?? "left",
+							textCasing: node.textCasing ?? "none",
+						},
 				clampedCard,
 			),
 		),
@@ -227,7 +274,11 @@ function migrateCardAppearance(card: LegacyEditorCard): EditorCard {
 							})
 						: { type: "solid", color: background ?? "#FFFDF8" },
 			texture: migrateTexture(legacyTexture),
-			borderRadius: legacySettings.borderRadius ?? borderRadius ?? 10,
+			opacity: legacySettings.opacity ?? 1,
+			blur: legacySettings.blur ?? 0,
+			borderWidth: legacySettings.borderWidth ?? 0,
+			borderStyle: legacySettings.borderStyle ?? "solid",
+			borderColor: legacySettings.borderColor ?? "#000000",
 		},
 	};
 }

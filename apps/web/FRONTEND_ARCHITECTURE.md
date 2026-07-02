@@ -644,7 +644,11 @@ type EditorCard = {
   height: number
   settings: CardSettings
   background: string
-  borderRadius: number
+  opacity: number
+  blur: number
+  borderWidth: number
+  borderStyle: "solid" | "dashed" | "dotted" | "double"
+  borderColor: string
 }
 ```
 

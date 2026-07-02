@@ -9,6 +9,7 @@ export function CardImageFill({ fill }: { fill: ImageCardFill }) {
 	return (
 		<div
 			aria-hidden="true"
+			data-card-layer="image"
 			className="pointer-events-none absolute inset-0 size-full bg-no-repeat"
 			style={{
 				backgroundImage: `url(${imageUrl})`,

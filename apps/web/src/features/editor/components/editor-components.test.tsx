@@ -6,6 +6,7 @@ import {
 	fireEvent,
 	render,
 	screen,
+	waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -141,6 +142,54 @@ describe("editor components", () => {
 		);
 	});
 
+	it("renders texture below an image fill on the card", async () => {
+		const card = useEditorStore.getState().cards[0];
+		if (!card) throw new Error("Expected a default card");
+
+		imageDbMocks.getEditorImage.mockResolvedValueOnce({
+			id: "background-image",
+			blob: new Blob(["image"], { type: "image/png" }),
+		});
+		vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:background-image");
+		vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+		useEditorStore.getState().updateCardSettings(card.id, {
+			fill: {
+				type: "image",
+				imageId: "background-image",
+				opacity: 1,
+				settings: { backgroundSize: "cover", originX: 50, originY: 50 },
+			},
+			texture: {
+				type: "texture",
+				texture: "paper",
+				opacity: 0.35,
+				settings: {
+					colorFront: "#FFFFFF",
+					colorBack: "#000000",
+					contrast: 0.5,
+					roughness: 0.5,
+					fiber: 0.5,
+					crumples: 0.5,
+					folds: 0.5,
+					seed: 1,
+				},
+			},
+		});
+
+		renderEditorParts();
+
+		await waitFor(() => {
+			const texture = document.querySelector('[data-card-layer="texture"]');
+			const image = document.querySelector('[data-card-layer="image"]');
+			expect(texture).toBeTruthy();
+			expect(image).toBeTruthy();
+			expect(
+				texture?.compareDocumentPosition(image as Node) &
+					Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+		});
+	});
+
 	it("offers image as an upload-based fill instead of a texture", async () => {
 		renderEditorParts();
 
@@ -209,6 +258,38 @@ describe("editor components", () => {
 		expect(textArea).toHaveProperty("readOnly", true);
 	});
 
+	it("updates text typography settings and applies them to the canvas", () => {
+		renderEditorParts();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add text to Untitled Card" }),
+		);
+
+		fireEvent.change(screen.getByLabelText("Font size"), {
+			target: { value: "32" },
+		});
+		fireEvent.change(screen.getByLabelText("Line height"), {
+			target: { value: "1.5" },
+		});
+		fireEvent.change(screen.getByLabelText("Letter spacing"), {
+			target: { value: "2.5" },
+		});
+
+		const node = useEditorStore.getState().cards[0]?.nodes[0];
+		expect(node).toMatchObject({
+			type: "text",
+			fontSize: 32,
+			lineHeight: 1.5,
+			letterSpacing: 2.5,
+		});
+
+		const textArea = screen.getByLabelText("Edit text node");
+		expect(textArea.style.fontSize).toBe("32px");
+		expect(textArea.style.lineHeight).toBe("1.5");
+		expect(textArea.style.letterSpacing).toBe("2.5px");
+		expect(screen.queryByText("Font type")).toBeNull();
+		expect(screen.queryByText("Weight")).toBeNull();
+	});
+
 	it("updates text color from the picker and valid hex edits", () => {
 		renderEditorParts();
 		fireEvent.click(
@@ -238,16 +319,18 @@ describe("editor components", () => {
 		});
 	});
 
-	it("uses a fixed-step font weight selector", () => {
+	it("offers text alignment and casing selectors", () => {
 		renderEditorParts();
 		fireEvent.click(
 			screen.getByRole("button", { name: "Add text to Untitled Card" }),
 		);
 
-		const weightControl = screen.getByLabelText("Weight");
-		expect(weightControl.getAttribute("role")).toBe("combobox");
-		expect(weightControl.getAttribute("type")).toBe("button");
-		expect(weightControl.textContent).toContain("500");
+		const alignmentControl = screen.getByLabelText("Alignment");
+		const casingControl = screen.getByLabelText("Casing");
+		expect(alignmentControl.getAttribute("role")).toBe("combobox");
+		expect(alignmentControl.textContent).toContain("Left");
+		expect(casingControl.getAttribute("role")).toBe("combobox");
+		expect(casingControl.textContent).toContain("Original");
 	});
 
 	it("adds an image node and accepts its source", () => {
@@ -268,6 +351,57 @@ describe("editor components", () => {
 			"src",
 			"https://example.com/specimen.jpg",
 		);
+	});
+
+	it("applies and resets image composition and effects", () => {
+		renderEditorParts();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add image to Untitled Card" }),
+		);
+		const card = useEditorStore.getState().cards[0];
+		const node = card?.nodes[0];
+		if (!card || !node || node.type !== "image")
+			throw new Error("Expected an image node");
+
+		act(() => {
+			useEditorStore.getState().updateNode(card.id, node.id, {
+				src: "https://example.com/effects.jpg",
+				zoom: 1.75,
+				positionX: 20,
+				positionY: 80,
+				effects: {
+					brightness: 120,
+					contrast: 90,
+					saturation: 140,
+					blur: 2,
+					grayscale: 25,
+					sepia: 10,
+				},
+			});
+		});
+
+		const image = document.querySelector("img") as HTMLImageElement;
+		expect(image.style.objectPosition).toBe("20% 80%");
+		expect(image.style.transform).toBe("scale(1.75)");
+		expect(image.style.transformOrigin).toBe("20% 80%");
+		expect(image.style.filter).toBe(
+			"brightness(120%) contrast(90%) saturate(140%) blur(2px) grayscale(25%) sepia(10%)",
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: "Reset image" }));
+		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
+			zoom: 1,
+			positionX: 50,
+			positionY: 50,
+			effects: {
+				brightness: 100,
+				contrast: 100,
+				saturation: 100,
+				blur: 0,
+				grayscale: 0,
+				sepia: 0,
+			},
+		});
 	});
 
 	it("opens image replacement on double click and shows uploaded state", () => {
@@ -425,11 +559,18 @@ describe("editor components", () => {
 			height: 640,
 			settings: {
 				fill: { type: "solid", color: "#AABBCC" },
-				borderRadius: 18,
+				opacity: 1,
+				blur: 0,
+				borderWidth: 0,
+				borderStyle: "solid",
+				borderColor: "#000000",
 			},
 		});
 		expect(useEditorStore.getState().cards[0]).not.toHaveProperty("background");
 		expect(useEditorStore.getState().cards[0]).not.toHaveProperty(
+			"borderRadius",
+		);
+		expect(useEditorStore.getState().cards[0]?.settings).not.toHaveProperty(
 			"borderRadius",
 		);
 		expect(useEditorStore.getState().selectedCardId).toBe(card.id);

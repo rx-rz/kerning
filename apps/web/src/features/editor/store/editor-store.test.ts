@@ -87,7 +87,11 @@ describe("editor store", () => {
 				aspectRatio: "business-card",
 				fill: { type: "solid", color: "#FFFDF8" },
 				texture: null,
-				borderRadius: 10,
+				opacity: 1,
+				blur: 0,
+				borderWidth: 0,
+				borderStyle: "solid",
+				borderColor: "#000000",
 			},
 		});
 		expect(selectedCardId).toBe(cards[0]?.id);
@@ -105,6 +109,10 @@ describe("editor store", () => {
 			type: "text",
 			fontType: "primary",
 			fontSize: 20,
+			lineHeight: 1.1,
+			letterSpacing: 0,
+			textAlign: "left",
+			textCasing: "none",
 			x: 24,
 			width: 220,
 		});
@@ -112,6 +120,17 @@ describe("editor store", () => {
 			type: "image",
 			width: 220,
 			imageId: null,
+			zoom: 1,
+			positionX: 50,
+			positionY: 50,
+			effects: {
+				brightness: 100,
+				contrast: 100,
+				saturation: 100,
+				blur: 0,
+				grayscale: 0,
+				sepia: 0,
+			},
 		});
 		expect(selectedNodeId).toBe(cards[0]?.nodes[1]?.id);
 	});
@@ -166,14 +185,22 @@ describe("editor store", () => {
 		useEditorStore.getState().updateCard(card.id, { name: "Poster" });
 		useEditorStore.getState().updateCardSettings(card.id, {
 			fill: { type: "solid", color: "#111111" },
-			borderRadius: 24,
+			opacity: 0.75,
+			blur: 4,
+			borderWidth: 2,
+			borderStyle: "dashed",
+			borderColor: "#FF0000",
 		});
 
 		expect(useEditorStore.getState().cards[0]).toMatchObject({
 			name: "Poster",
 			settings: {
 				fill: { type: "solid", color: "#111111" },
-				borderRadius: 24,
+				opacity: 0.75,
+				blur: 4,
+				borderWidth: 2,
+				borderStyle: "dashed",
+				borderColor: "#FF0000",
 			},
 		});
 	});

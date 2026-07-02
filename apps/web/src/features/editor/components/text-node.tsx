@@ -49,9 +49,11 @@ export function TextNode({
 				fontSize: node.fontSize,
 				fontWeight: node.fontWeight,
 				lineHeight: node.lineHeight,
+				letterSpacing: node.letterSpacing,
 				color: node.color,
 				WebkitTextFillColor: node.color,
 				textAlign: node.textAlign,
+				textTransform: node.textCasing,
 			}}
 			onChange={(event) =>
 				useEditorStore.getState().updateNode(cardId, node.id, {

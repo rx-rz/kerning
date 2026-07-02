@@ -12,6 +12,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import { Slider } from "#/components/ui/slider";
 import { deleteEditorImage, replaceEditorImage } from "#/db/image-db";
 import {
 	NODE_CARD_INSET,
@@ -21,8 +22,10 @@ import type {
 	EditorCard,
 	EditorNode,
 	EditorNodePatch,
-	FontType,
+	ImageEffects,
 	ImageNode,
+	TextAlignment,
+	TextCasing,
 	TextNode,
 } from "#/features/editor/types";
 
@@ -30,18 +33,6 @@ type NodeInspectorProps = {
 	card: EditorCard;
 	node: EditorNode;
 };
-
-const FONT_WEIGHTS = [
-	{ value: 100, label: "Thin" },
-	{ value: 200, label: "Extra light" },
-	{ value: 300, label: "Light" },
-	{ value: 400, label: "Regular" },
-	{ value: 500, label: "Medium" },
-	{ value: 600, label: "Semi bold" },
-	{ value: 700, label: "Bold" },
-	{ value: 800, label: "Extra bold" },
-	{ value: 900, label: "Black" },
-] as const;
 
 export function NodeInspector({ card, node }: NodeInspectorProps) {
 	const updateNode = useEditorStore((state) => state.updateNode);
@@ -134,29 +125,6 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 					}
 				/>
 			</Field>
-			<Field className="space-y-0">
-				<Select
-					value={node.fontType}
-					onValueChange={(fontType: FontType) =>
-						updateNode(cardId, node.id, { fontType })
-					}
-				>
-					<SelectTrigger id="node-font-type" className="w-full">
-						<FieldLabel
-							className="pointer-events-none mr-auto"
-							htmlFor="node-font-type"
-						>
-							Font type
-						</FieldLabel>
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent align="end">
-						<SelectItem value="primary">Primary</SelectItem>
-						<SelectItem value="sec1">Secondary 1</SelectItem>
-						<SelectItem value="sec2">Secondary 2</SelectItem>
-					</SelectContent>
-				</Select>
-			</Field>
 			<div className="grid grid-cols-2 gap-2">
 				<NumberField
 					id="node-font-size"
@@ -167,31 +135,62 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 						updateFinite(updateNode, cardId, node.id, "fontSize", value)
 					}
 				/>
-				<Field className="space-y-0">
-					<Select
-						value={String(node.fontWeight)}
-						onValueChange={(fontWeight) =>
-							updateNode(cardId, node.id, { fontWeight: Number(fontWeight) })
-						}
-					>
-						<SelectTrigger id="node-font-weight" className="w-full">
-							<FieldLabel
-								className="pointer-events-none mr-auto"
-								htmlFor="node-font-weight"
-							>
-								Weight
-							</FieldLabel>
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent align="end">
-							{FONT_WEIGHTS.map((weight) => (
-								<SelectItem key={weight.value} value={String(weight.value)}>
-									{weight.value} · {weight.label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</Field>
+				<NumberField
+					id="node-line-height"
+					label="Line height"
+					value={node.lineHeight}
+					min={0.5}
+					max={5}
+					step={0.1}
+					onChange={(value) =>
+						updateFinite(updateNode, cardId, node.id, "lineHeight", value)
+					}
+				/>
+				<NumberField
+					id="node-letter-spacing"
+					label="Letter spacing"
+					value={node.letterSpacing}
+					min={-20}
+					max={100}
+					step={0.1}
+					onChange={(value) =>
+						updateFinite(updateNode, cardId, node.id, "letterSpacing", value)
+					}
+				/>
+			</div>
+			<div className="grid grid-cols-2 gap-2">
+				<TextSelect
+					id="node-text-alignment"
+					label="Alignment"
+					value={node.textAlign}
+					onValueChange={(textAlign) =>
+						updateNode(cardId, node.id, {
+							textAlign: textAlign as TextAlignment,
+						})
+					}
+					options={[
+						["left", "Left"],
+						["center", "Center"],
+						["right", "Right"],
+						["justify", "Justify"],
+					]}
+				/>
+				<TextSelect
+					id="node-text-casing"
+					label="Casing"
+					value={node.textCasing}
+					onValueChange={(textCasing) =>
+						updateNode(cardId, node.id, {
+							textCasing: textCasing as TextCasing,
+						})
+					}
+					options={[
+						["none", "Original"],
+						["uppercase", "Uppercase"],
+						["lowercase", "Lowercase"],
+						["capitalize", "Capitalize"],
+					]}
+				/>
 			</div>
 			<ColorField
 				label="Color"
@@ -229,6 +228,28 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 	function handleRemoteUrl(src: string) {
 		if (node.imageId) void deleteEditorImage(node.imageId);
 		updateNode(cardId, node.id, { src, imageId: null });
+	}
+
+	function updateEffect(key: keyof ImageEffects, value: number) {
+		updateNode(cardId, node.id, {
+			effects: { ...node.effects, [key]: value },
+		});
+	}
+
+	function resetAdjustments() {
+		updateNode(cardId, node.id, {
+			zoom: 1,
+			positionX: 50,
+			positionY: 50,
+			effects: {
+				brightness: 100,
+				contrast: 100,
+				saturation: 100,
+				blur: 0,
+				grayscale: 0,
+				sepia: 0,
+			},
+		});
 	}
 
 	return (
@@ -322,6 +343,81 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 					</SelectContent>
 				</Select>
 			</Field>
+			<div className="space-y-2 pt-2">
+				<div className="flex items-center justify-between">
+					<h4 className="font-mono text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
+						Composition
+					</h4>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="h-7 px-2 text-[10px]"
+						onClick={resetAdjustments}
+					>
+						Reset image
+					</Button>
+				</div>
+				<Slider
+					label="Zoom"
+					value={[node.zoom]}
+					min={1}
+					max={4}
+					step={0.05}
+					formatValue={(value) => `${Math.round(value * 100)}%`}
+					showTicks={false}
+					snapToDeciles={false}
+					onValueChange={([zoom]) => {
+						if (zoom !== undefined) updateNode(cardId, node.id, { zoom });
+					}}
+				/>
+				<Slider
+					label="Horizontal position"
+					value={[node.positionX]}
+					formatValue={(value) => `${value}%`}
+					onValueChange={([positionX]) => {
+						if (positionX !== undefined)
+							updateNode(cardId, node.id, { positionX });
+					}}
+				/>
+				<Slider
+					label="Vertical position"
+					value={[node.positionY]}
+					formatValue={(value) => `${value}%`}
+					onValueChange={([positionY]) => {
+						if (positionY !== undefined)
+							updateNode(cardId, node.id, { positionY });
+					}}
+				/>
+			</div>
+			<div className="space-y-2 pt-2">
+				<h4 className="font-mono text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
+					Effects
+				</h4>
+				{(
+					[
+						["brightness", "Brightness", 0, 200, "%"],
+						["contrast", "Contrast", 0, 200, "%"],
+						["saturation", "Saturation", 0, 200, "%"],
+						["blur", "Blur", 0, 20, "px"],
+						["grayscale", "Grayscale", 0, 100, "%"],
+						["sepia", "Sepia", 0, 100, "%"],
+					] as const
+				).map(([key, label, min, max, unit]) => (
+					<Slider
+						key={key}
+						label={label}
+						value={[node.effects[key]]}
+						min={min}
+						max={max}
+						step={key === "blur" ? 0.5 : 1}
+						formatValue={(value) => `${value}${unit}`}
+						onValueChange={([value]) => {
+							if (value !== undefined) updateEffect(key, value);
+						}}
+					/>
+				))}
+			</div>
 		</section>
 	);
 }
@@ -330,7 +426,7 @@ function updateFinite(
 	updateNode: (cardId: string, nodeId: string, patch: EditorNodePatch) => void,
 	cardId: string,
 	nodeId: string,
-	key: "fontSize",
+	key: "fontSize" | "lineHeight" | "letterSpacing",
 	value: string,
 ) {
 	const parsedValue = Number(value);
@@ -344,6 +440,7 @@ function NumberField({
 	value,
 	min,
 	max,
+	step,
 	onChange,
 }: {
 	id: string;
@@ -351,6 +448,7 @@ function NumberField({
 	value: number;
 	min?: number;
 	max?: number;
+	step?: number;
 	onChange: (value: string) => void;
 }) {
 	return (
@@ -366,10 +464,45 @@ function NumberField({
 				type="number"
 				min={min}
 				max={max}
+				step={step}
 				className="pr-4 pl-20 text-right"
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
 			/>
+		</Field>
+	);
+}
+
+function TextSelect({
+	id,
+	label,
+	value,
+	options,
+	onValueChange,
+}: {
+	id: string;
+	label: string;
+	value: string;
+	options: readonly (readonly [string, string])[];
+	onValueChange: (value: string) => void;
+}) {
+	return (
+		<Field className="space-y-0">
+			<Select value={value} onValueChange={onValueChange}>
+				<SelectTrigger id={id} aria-label={label} className="w-full">
+					<FieldLabel className="pointer-events-none mr-auto" htmlFor={id}>
+						{label}
+					</FieldLabel>
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent align="end">
+					{options.map(([optionValue, optionLabel]) => (
+						<SelectItem key={optionValue} value={optionValue}>
+							{optionLabel}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
 		</Field>
 	);
 }
