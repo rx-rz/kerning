@@ -17,13 +17,14 @@ import { useEditorStore } from "#/features/editor/store/editor-store";
 
 type EditorCanvasProps = {
 	onToggleInspector?: () => void;
+	onOpenTemplates?: (cardId: string) => void;
 };
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 1.5;
 const ZOOM_STEP = 0.1;
 
-export function EditorCanvas({ onToggleInspector }: EditorCanvasProps) {
+export function EditorCanvas({ onToggleInspector, onOpenTemplates }: EditorCanvasProps) {
 	const [zoom, setZoom] = useState(1);
 	const cards = useEditorStore((state) => state.cards);
 	const selectedCardId = useEditorStore((state) => state.selectedCardId);
@@ -144,7 +145,6 @@ export function EditorCanvas({ onToggleInspector }: EditorCanvasProps) {
 		<section
 			aria-label="Editor preview"
 			className="relative h-full min-h-0 overflow-hidden backdrop-blur-xl"
-			onClick={() => selectCard(null)}
 			onKeyDown={(event) => {
 				if (event.key === "Escape") {
 					selectCard(null);
@@ -168,6 +168,7 @@ export function EditorCanvas({ onToggleInspector }: EditorCanvasProps) {
 									isSelected={card.id === selectedCardId}
 									onSelect={selectCard}
 									onToggleSettings={onToggleInspector}
+									onOpenTemplates={onOpenTemplates}
 									onDelete={deleteCard}
 								/>
 							</div>

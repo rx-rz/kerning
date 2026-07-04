@@ -6,6 +6,8 @@ import {
 } from "#/features/editor/lib/card-fill";
 import { getCardSizeFromAspectRatio } from "#/features/editor/lib/card-size";
 import { useEditorStore } from "#/features/editor/store/editor-store";
+import { EDITOR_TEMPLATES } from "#/features/editor/lib/editor-templates";
+import { SHAPE_LIBRARY } from "#/features/editor/lib/shape-library";
 import type { CardAspectRatio, EditorCard } from "#/features/editor/types";
 
 function getCardAt(cards: EditorCard[], index: number) {
@@ -37,11 +39,11 @@ describe("card fills", () => {
 		const radial = createDefaultFill("radial-gradient");
 
 		expect(getCardFillStyle(linear)).toEqual({
-			backgroundImage: "linear-gradient(135deg, #FFFDF8 0%, #111111 100%)",
+			backgroundImage: "linear-gradient(135deg, #FFFDF8 1%, #111111 100%)",
 		});
 		expect(getCardFillStyle(radial)).toEqual({
 			backgroundImage:
-				"radial-gradient(circle at 50% 50%, #FFFDF8 0%, #111111 100%)",
+				"radial-gradient(circle at 50% 50%, #FFFDF8 1%, #111111 100%)",
 		});
 	});
 
@@ -85,7 +87,7 @@ describe("editor store", () => {
 			height: 320,
 			settings: {
 				aspectRatio: "business-card",
-				fill: { type: "solid", color: "#FFFDF8" },
+				fill: { type: "solid", color: "#FFFFFF" },
 				texture: null,
 				opacity: 1,
 				blur: 0,
@@ -133,6 +135,46 @@ describe("editor store", () => {
 			},
 		});
 		expect(selectedNodeId).toBe(cards[0]?.nodes[1]?.id);
+	});
+
+	it("offers exactly 200 categorized shapes and adds them as editable nodes", () => {
+		const card = getCardAt(useEditorStore.getState().cards, 0);
+		const shape = SHAPE_LIBRARY.find(({ type }) => type === "ellipse");
+		if (!shape) throw new Error("Expected an ellipse shape");
+
+		expect(SHAPE_LIBRARY).toHaveLength(200);
+		expect(new Set(SHAPE_LIBRARY.map(({ category }) => category)).size).toBeGreaterThan(4);
+		useEditorStore.getState().addShapeNode(card.id, {
+			shapeType: shape.type,
+			shape: shape.value,
+		});
+
+		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
+			type: "shape",
+			shapeType: "ellipse",
+			color: "#111111",
+		});
+	});
+
+	it("applies templates as editable nodes with their intended aspect ratio", () => {
+		const card = getCardAt(useEditorStore.getState().cards, 0);
+		const album = EDITOR_TEMPLATES.find(({ id }) => id === "album-1");
+		if (!album) throw new Error("Expected the first album template");
+
+		useEditorStore.getState().applyTemplate(card.id, album.card);
+		const templatedCard = getCardAt(useEditorStore.getState().cards, 0);
+
+		expect(EDITOR_TEMPLATES).toHaveLength(20);
+		expect(templatedCard).toMatchObject({
+			id: card.id,
+			name: "brat",
+			width: 500,
+			height: 500,
+			settings: { aspectRatio: "1:1" },
+		});
+		expect(templatedCard.nodes).toHaveLength(1);
+		expect(templatedCard.nodes[0]).toMatchObject({ type: "text", text: "brat" });
+		expect(templatedCard.nodes[0]?.id).not.toBe(album.card.nodes[0]?.id);
 	});
 
 	it("constrains node geometry to the card", () => {
@@ -245,14 +287,12 @@ describe("editor store", () => {
 		expect(useEditorStore.getState().selectedCardId).toBe(cards[2]?.id);
 	});
 
-	it("allows deleting the final card and reset restores a default card", () => {
+	it("keeps the final card so every project always has a card", () => {
 		const card = getCardAt(useEditorStore.getState().cards, 0);
 
 		useEditorStore.getState().deleteCard(card.id);
-		expect(useEditorStore.getState()).toMatchObject({
-			cards: [],
-			selectedCardId: null,
-		});
+		expect(useEditorStore.getState().cards).toHaveLength(1);
+		expect(useEditorStore.getState().selectedCardId).toBe(card.id);
 
 		useEditorStore.getState().resetEditor();
 		expect(useEditorStore.getState().cards).toHaveLength(1);

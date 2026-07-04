@@ -54,6 +54,7 @@ export function TextNode({
 				WebkitTextFillColor: node.color,
 				textAlign: node.textAlign,
 				textTransform: node.textCasing,
+				fontFamily: `var(--font-project-${node.fontType})`,
 			}}
 			onChange={(event) =>
 				useEditorStore.getState().updateNode(cardId, node.id, {

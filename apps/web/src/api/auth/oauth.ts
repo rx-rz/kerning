@@ -6,11 +6,12 @@ import { queries } from "../queries";
 type OAuthProvider = "google";
 
 async function getOauthLink(provider: OAuthProvider) {
+	const frontendOrigin = window.location.origin;
 	const result = await authClient.signIn.social({
 		provider,
-		callbackURL: "/",
-		newUserCallbackURL: "/",
-		errorCallbackURL: "/auth/login",
+		callbackURL: `${frontendOrigin}/`,
+		newUserCallbackURL: `${frontendOrigin}/`,
+		errorCallbackURL: `${frontendOrigin}/auth/login`,
 		disableRedirect: true,
 	});
 

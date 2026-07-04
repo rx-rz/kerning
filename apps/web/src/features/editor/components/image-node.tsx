@@ -83,7 +83,7 @@ export function ImageNode({
 						draggable={false}
 					/>
 				) : (
-					<span className="flex size-full flex-col items-center justify-center gap-2 border border-dashed border-black/20 bg-black/5 text-[10px] font-semibold tracking-wide text-black/45 uppercase">
+					<span className="flex size-full flex-col items-center justify-center gap-2 border border-dashed border-black/20 bg-black/5 text-[10px] font-semibold tracking-wide text-black/45">
 						<ImageIcon className="size-5" />
 						Add image URL
 					</span>

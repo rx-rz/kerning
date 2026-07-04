@@ -1,10 +1,19 @@
-import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import {
+	AlignCenter,
+	AlignJustify,
+	AlignLeft,
+	AlignRight,
+	Crop,
+	Scan,
+	Trash2,
+} from "lucide-react";
+import { useId, useState } from "react";
 
 import { Button } from "#/components/ui/button";
 import { ColorField } from "#/components/ui/color-field";
 import { Field, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
+import { Slider } from "#/components/ui/slider";
 import {
 	Select,
 	SelectContent,
@@ -12,8 +21,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
-import { Slider } from "#/components/ui/slider";
 import { deleteEditorImage, replaceEditorImage } from "#/db/image-db";
+import { InspectorSection } from "#/features/editor/components/inspector-section";
 import {
 	NODE_CARD_INSET,
 	useEditorStore,
@@ -24,6 +33,7 @@ import type {
 	EditorNodePatch,
 	ImageEffects,
 	ImageNode,
+	ShapeNode,
 	TextAlignment,
 	TextCasing,
 	TextNode,
@@ -42,7 +52,8 @@ export function NodeInspector({ card, node }: NodeInspectorProps) {
 		key: "x" | "y" | "width" | "height",
 		value: string,
 	) {
-		const parsedValue = Number(value);
+		const parsedValue =
+			node.type === "image" ? Math.ceil(Number(value)) : Number(value);
 		if (Number.isFinite(parsedValue))
 			updateNode(card.id, node.id, { [key]: parsedValue });
 	}
@@ -55,37 +66,38 @@ export function NodeInspector({ card, node }: NodeInspectorProps) {
 	}
 
 	return (
-		<div className="divide-y divide-border pt-6">
-			<section className="flex items-center justify-between px-5 py-4">
-				<div>
-					<p className="text-xs font-semibold capitalize">{node.type} node</p>
-					<p className="mt-1 font-mono text-[10px] text-muted-foreground">
-						Positioned inside {card.name}
-					</p>
-				</div>
-				<Button
-					type="button"
-					aria-label={`Delete ${node.type} node`}
-					variant="ghost"
-					size="icon-sm"
-					className="text-destructive"
-					onClick={handleDelete}
-				>
-					<Trash2 />
-				</Button>
-			</section>
+		<div className="space-y-3 px-4 py-5">
+			{node.type === "text" ? (
+				<section className="flex items-center justify-between px-5 py-4">
+					<div>
+						<p className="text-xs font-semibold capitalize">{node.type} node</p>
+						<p className="mt-1 font-mono text-[10px] text-muted-foreground">
+							Positioned inside {card.name}
+						</p>
+					</div>
+					<Button
+						type="button"
+						aria-label={`Delete ${node.type} node`}
+						variant="ghost"
+						size="icon-sm"
+						className="text-destructive"
+						onClick={handleDelete}
+					>
+						<Trash2 />
+					</Button>
+				</section>
+			) : null}
 
 			{node.type === "text" ? (
 				<TextSettings cardId={card.id} node={node} />
-			) : (
+			) : node.type === "image" ? (
 				<ImageSettings cardId={card.id} node={node} />
+			) : (
+				<ShapeSettings cardId={card.id} node={node} />
 			)}
 
-			<section className="space-y-3 px-5 py-4">
-				<h3 className="font-mono text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
-					Geometry
-				</h3>
-				<div className="grid grid-cols-2 gap-2">
+			<InspectorSection title="Layout">
+				<div className="space-y-2">
 					{(["x", "y", "width", "height"] as const).map((key) => (
 						<NumberField
 							key={key}
@@ -101,8 +113,35 @@ export function NodeInspector({ card, node }: NodeInspectorProps) {
 						/>
 					))}
 				</div>
-			</section>
+			</InspectorSection>
 		</div>
+	);
+}
+
+function ShapeSettings({ cardId, node }: { cardId: string; node: ShapeNode }) {
+	const updateNode = useEditorStore((state) => state.updateNode);
+
+	return (
+		<InspectorSection title="Shape" defaultOpen>
+			<ColorField
+				label="Color"
+				ariaLabel="Shape color"
+				value={node.color}
+				onChange={(color) => updateNode(cardId, node.id, { color })}
+			/>
+			<NumberField
+				id="shape-size"
+				label="Size"
+				value={Math.max(node.width, node.height)}
+				min={8}
+				onChange={(value) => {
+					const size = Number(value);
+					if (Number.isFinite(size)) {
+						updateNode(cardId, node.id, { width: size, height: size });
+					}
+				}}
+			/>
+		</InspectorSection>
 	);
 }
 
@@ -110,12 +149,10 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 	const updateNode = useEditorStore((state) => state.updateNode);
 
 	return (
-		<section className="space-y-3 px-5 py-4">
-			<h3 className="font-mono text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
-				Typography
-			</h3>
+		<>
+		<InspectorSection title="Content">
 			<Field className="space-y-1">
-				<FieldLabel htmlFor="node-text">Content</FieldLabel>
+				<FieldLabel htmlFor="node-text">Text</FieldLabel>
 				<Input
 					id="node-text"
 					aria-label="Text content"
@@ -125,10 +162,32 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 					}
 				/>
 			</Field>
-			<div className="grid grid-cols-2 gap-2">
+			<Field className="space-y-1">
+				<FieldLabel htmlFor="node-font-role">Font role</FieldLabel>
+				<Select
+					value={node.fontType}
+					onValueChange={(fontType) =>
+						updateNode(cardId, node.id, {
+							fontType: fontType as TextNode["fontType"],
+						})
+					}
+				>
+					<SelectTrigger id="node-font-role">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="primary">Primary</SelectItem>
+						<SelectItem value="sec1">Secondary 1</SelectItem>
+						<SelectItem value="sec2">Secondary 2</SelectItem>
+					</SelectContent>
+				</Select>
+			</Field>
+		</InspectorSection>
+		<InspectorSection title="Appearance">
+			<div className="space-y-2">
 				<NumberField
 					id="node-font-size"
-					label="Font size"
+					label="Size"
 					value={node.fontSize}
 					min={1}
 					onChange={(value) =>
@@ -158,37 +217,35 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 					}
 				/>
 			</div>
-			<div className="grid grid-cols-2 gap-2">
-				<TextSelect
-					id="node-text-alignment"
+			<div className="space-y-2">
+				<VisualChoiceGroup
 					label="Alignment"
 					value={node.textAlign}
-					onValueChange={(textAlign) =>
+					onChange={(textAlign) =>
 						updateNode(cardId, node.id, {
 							textAlign: textAlign as TextAlignment,
 						})
 					}
 					options={[
-						["left", "Left"],
-						["center", "Center"],
-						["right", "Right"],
-						["justify", "Justify"],
+						{ value: "left", label: "Left", visual: <AlignLeft /> },
+						{ value: "center", label: "Center", visual: <AlignCenter /> },
+						{ value: "right", label: "Right", visual: <AlignRight /> },
+						{ value: "justify", label: "Justify", visual: <AlignJustify /> },
 					]}
 				/>
-				<TextSelect
-					id="node-text-casing"
-					label="Casing"
+				<VisualChoiceGroup
+					label="Case"
 					value={node.textCasing}
-					onValueChange={(textCasing) =>
+					onChange={(textCasing) =>
 						updateNode(cardId, node.id, {
 							textCasing: textCasing as TextCasing,
 						})
 					}
 					options={[
-						["none", "Original"],
-						["uppercase", "Uppercase"],
-						["lowercase", "Lowercase"],
-						["capitalize", "Capitalize"],
+						{ value: "none", label: "Original", visual: "Aa" },
+						{ value: "uppercase", label: "Uppercase", visual: "Ab" },
+						{ value: "lowercase", label: "Lowercase", visual: "ab" },
+						{ value: "capitalize", label: "Capitalize", visual: "Ab" },
 					]}
 				/>
 			</div>
@@ -199,7 +256,8 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 				value={node.color}
 				onChange={(color) => updateNode(cardId, node.id, { color })}
 			/>
-		</section>
+		</InspectorSection>
+		</>
 	);
 }
 
@@ -253,12 +311,8 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 	}
 
 	return (
-		<section className="space-y-3 px-5 py-4">
-			<h3 className="font-mono text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
-				Image
-			</h3>
+		<InspectorSection title="Image" defaultOpen>
 			<Field className="space-y-1">
-				<FieldLabel htmlFor="node-image-upload">Upload</FieldLabel>
 				<Input
 					id="node-image-upload"
 					type="file"
@@ -272,7 +326,7 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 				/>
 				<label
 					htmlFor="node-image-upload"
-					className="flex min-h-12 cursor-pointer items-center justify-between rounded-lg bg-background px-4 py-3 text-xs font-semibold tracking-[.025em] shadow-[inset_0_0_0_1px_var(--line-hair)] transition-colors hover:bg-muted"
+					className="flex min-h-12 cursor-pointer items-center justify-between rounded-lg bg-white px-4 py-3 text-xs font-semibold tracking-[.025em] shadow-[inset_0_0_0_1px_var(--line-hair)]"
 				>
 					<span>
 						{isSaving
@@ -311,38 +365,19 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 					onChange={(event) => handleRemoteUrl(event.target.value)}
 				/>
 			</Field>
-			<Field className="space-y-1">
-				<FieldLabel htmlFor="node-image-alt">Alt text</FieldLabel>
-				<Input
-					id="node-image-alt"
-					value={node.alt}
-					onChange={(event) =>
-						updateNode(cardId, node.id, { alt: event.target.value })
-					}
-				/>
-			</Field>
-			<Field className="space-y-0">
-				<Select
-					value={node.objectFit}
-					onValueChange={(objectFit: ImageNode["objectFit"]) =>
-						updateNode(cardId, node.id, { objectFit })
-					}
-				>
-					<SelectTrigger id="node-image-fit" className="w-full">
-						<FieldLabel
-							className="pointer-events-none mr-auto"
-							htmlFor="node-image-fit"
-						>
-							Fit
-						</FieldLabel>
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent align="end">
-						<SelectItem value="cover">Cover</SelectItem>
-						<SelectItem value="contain">Contain</SelectItem>
-					</SelectContent>
-				</Select>
-			</Field>
+			<VisualChoiceGroup
+				label="Image fit"
+				value={node.objectFit}
+				onChange={(objectFit) =>
+					updateNode(cardId, node.id, {
+						objectFit: objectFit as ImageNode["objectFit"],
+					})
+				}
+				options={[
+					{ value: "cover", label: "Cover", visual: <Crop /> },
+					{ value: "contain", label: "Contain", visual: <Scan /> },
+				]}
+			/>
 			<div className="space-y-2 pt-2">
 				<div className="flex items-center justify-between">
 					<h4 className="font-mono text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
@@ -418,7 +453,7 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 					/>
 				))}
 			</div>
-		</section>
+		</InspectorSection>
 	);
 }
 
@@ -473,36 +508,44 @@ function NumberField({
 	);
 }
 
-function TextSelect({
-	id,
+function VisualChoiceGroup({
 	label,
 	value,
 	options,
-	onValueChange,
+	onChange,
 }: {
-	id: string;
 	label: string;
 	value: string;
-	options: readonly (readonly [string, string])[];
-	onValueChange: (value: string) => void;
+	options: Array<{ value: string; label: string; visual: React.ReactNode }>;
+	onChange: (value: string) => void;
 }) {
+	const name = useId();
+
 	return (
-		<Field className="space-y-0">
-			<Select value={value} onValueChange={onValueChange}>
-				<SelectTrigger id={id} aria-label={label} className="w-full">
-					<FieldLabel className="pointer-events-none mr-auto" htmlFor={id}>
-						{label}
-					</FieldLabel>
-					<SelectValue />
-				</SelectTrigger>
-				<SelectContent align="end">
-					{options.map(([optionValue, optionLabel]) => (
-						<SelectItem key={optionValue} value={optionValue}>
-							{optionLabel}
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
-		</Field>
+		<fieldset className="flex items-center gap-2">
+			<legend className="sr-only">{label}</legend>
+			<span aria-hidden="true" className="w-16 shrink-0 text-xs font-semibold">
+				{label}
+			</span>
+			<div className="grid min-w-0 flex-1 grid-flow-col auto-cols-fr gap-1">
+				{options.map((option) => (
+					<label key={option.value} className="cursor-pointer">
+						<input
+							type="radio"
+							name={name}
+							value={option.value}
+							aria-label={option.label}
+							checked={value === option.value}
+							className="peer sr-only"
+							onChange={() => onChange(option.value)}
+						/>
+						<span className="flex min-h-12 items-center justify-center rounded-lg border border-hairline bg-white text-xs font-semibold text-muted-foreground transition-colors peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground [&_svg]:size-4">
+							{option.visual}
+							<span className="sr-only">{option.label}</span>
+						</span>
+					</label>
+				))}
+			</div>
+		</fieldset>
 	);
 }

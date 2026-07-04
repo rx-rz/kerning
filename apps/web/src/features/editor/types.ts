@@ -167,8 +167,18 @@ export type ImageEffects = {
 	sepia: number;
 };
 
-export type EditorNode = TextNode | ImageNode;
-export type EditorNodePatch = Partial<TextNode> | Partial<ImageNode>;
+export type ShapeNode = BaseNode & {
+	type: "shape";
+	shapeType: "icon" | "emoji" | "line" | "rectangle" | "ellipse";
+	shape: string;
+	color: string;
+};
+
+export type EditorNode = TextNode | ImageNode | ShapeNode;
+export type EditorNodePatch =
+	| Partial<TextNode>
+	| Partial<ImageNode>
+	| Partial<ShapeNode>;
 
 export type EditorCard = {
 	id: string;

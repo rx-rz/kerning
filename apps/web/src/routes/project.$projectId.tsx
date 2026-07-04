@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { EditorPage } from "#/features/editor/components/editor-page";
+import { ProjectEditorPage } from "#/features/editor/components/editor-page";
 
 export const Route = createFileRoute("/project/$projectId")({
 	component: ProjectEditorRoute,
@@ -9,5 +9,5 @@ export const Route = createFileRoute("/project/$projectId")({
 function ProjectEditorRoute() {
 	const { projectId } = Route.useParams();
 
-	return <EditorPage key={projectId} />;
+	return <ProjectEditorPage key={projectId} projectId={projectId} />;
 }

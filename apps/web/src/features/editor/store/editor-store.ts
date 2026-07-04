@@ -2,7 +2,10 @@ import { createId } from "@paralleldrive/cuid2";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { mutative } from "zustand-mutative";
-import { createDefaultFill } from "#/features/editor/lib/card-fill";
+import {
+	createDefaultFill,
+	normalizeCardFillPercentages,
+} from "#/features/editor/lib/card-fill";
 import {
 	clampCardHeight,
 	clampCardWidth,
@@ -16,6 +19,7 @@ import type {
 	EditorNodePatch,
 	ImageCardFill,
 	ImageNode,
+	ShapeNode,
 	TextNode,
 	TextureCardFill,
 } from "#/features/editor/types";
@@ -32,8 +36,14 @@ type EditorState = {
 	updateCardSettings: (id: string, patch: Partial<CardSettings>) => void;
 	addTextNode: (cardId: string) => void;
 	addImageNode: (cardId: string) => void;
+	addShapeNode: (
+		cardId: string,
+		shape: Pick<ShapeNode, "shapeType" | "shape">,
+	) => void;
+	applyTemplate: (cardId: string, template: EditorCard) => void;
 	updateNode: (cardId: string, nodeId: string, patch: EditorNodePatch) => void;
 	deleteNode: (cardId: string, nodeId: string) => void;
+	reorderNode: (cardId: string, nodeId: string, targetIndex: number) => void;
 	resetEditor: () => void;
 };
 
@@ -59,7 +69,7 @@ function createDefaultCard(name = "Untitled Card"): EditorCard {
 		height,
 		settings: {
 			aspectRatio: "business-card",
-			fill: { type: "solid", color: "#FFFDF8" },
+			fill: { type: "solid", color: "#FFFFFF" },
 			texture: null,
 			opacity: 1,
 			blur: 0,
@@ -132,6 +142,25 @@ function createDefaultImageNode(card: EditorCard): ImageNode {
 	};
 }
 
+function createDefaultShapeNode(
+	card: EditorCard,
+	shape: Pick<ShapeNode, "shapeType" | "shape">,
+): ShapeNode {
+	const size = Math.min(120, Math.max(24, Math.min(card.width, card.height) / 3));
+
+	return {
+		id: createId(),
+		type: "shape",
+		x: 24,
+		y: 24,
+		width: shape.shapeType === "line" ? Math.min(180, card.width - 48) : size,
+		height: shape.shapeType === "line" ? 32 : size,
+		shapeType: shape.shapeType,
+		shape: shape.shape,
+		color: "#111111",
+	};
+}
+
 function clamp(value: number, minimum: number, maximum: number) {
 	return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
 }
@@ -160,8 +189,9 @@ function normalizeCard(card: EditorCard): EditorCard {
 		...card,
 		settings: {
 			...card.settings,
+			fill: normalizeCardFillPercentages(card.settings.fill),
 			opacity: card.settings.opacity ?? 1,
-			blur: card.settings.blur ?? 0,
+			blur: clamp(card.settings.blur ?? 0, 0, 10),
 			borderWidth: card.settings.borderWidth ?? 0,
 			borderStyle: card.settings.borderStyle ?? "solid",
 			borderColor: card.settings.borderColor ?? "#000000",
@@ -173,7 +203,7 @@ function normalizeCard(card: EditorCard): EditorCard {
 		...clampedCard,
 		nodes: clampedCard.nodes.map((node) =>
 			constrainNode(
-				node.type === "image"
+			node.type === "image"
 					? {
 							...node,
 							imageId: node.imageId ?? null,
@@ -189,12 +219,19 @@ function normalizeCard(card: EditorCard): EditorCard {
 								sepia: node.effects?.sepia ?? 0,
 							},
 						}
-					: {
+					: node.type === "text"
+						? {
 							...node,
 							letterSpacing: node.letterSpacing ?? 0,
 							textAlign: node.textAlign ?? "left",
 							textCasing: node.textCasing ?? "none",
-						},
+							}
+						: {
+								...node,
+								shapeType: node.shapeType ?? "icon",
+								shape: node.shape ?? "circle",
+								color: node.color ?? "#111111",
+							},
 				clampedCard,
 			),
 		),
@@ -338,7 +375,7 @@ export const useEditorStore = create<EditorState>()(
 				set((state) => {
 					const deletedIndex = state.cards.findIndex((card) => card.id === id);
 
-					if (deletedIndex === -1) {
+					if (deletedIndex === -1 || state.cards.length === 1) {
 						return;
 					}
 
@@ -403,6 +440,30 @@ export const useEditorStore = create<EditorState>()(
 					state.selectedCardId = cardId;
 					state.selectedNodeId = node.id;
 				}),
+			addShapeNode: (cardId, shape) =>
+				set((state) => {
+					const card = state.cards.find(({ id }) => id === cardId);
+
+					if (!card) return;
+
+					const node = createDefaultShapeNode(card, shape);
+					card.nodes.push(node);
+					state.selectedCardId = cardId;
+					state.selectedNodeId = node.id;
+				}),
+			applyTemplate: (cardId, template) =>
+				set((state) => {
+					const cardIndex = state.cards.findIndex(({ id }) => id === cardId);
+					if (cardIndex === -1) return;
+
+					state.cards[cardIndex] = normalizeCard({
+						...template,
+						id: cardId,
+						nodes: template.nodes.map((node) => ({ ...node, id: createId() })),
+					});
+					state.selectedCardId = cardId;
+					state.selectedNodeId = null;
+				}),
 			updateNode: (cardId, nodeId, patch) =>
 				set((state) => {
 					const card = state.cards.find(({ id }) => id === cardId);
@@ -427,11 +488,25 @@ export const useEditorStore = create<EditorState>()(
 					card.nodes.splice(nodeIndex, 1);
 					if (state.selectedNodeId === nodeId) state.selectedNodeId = null;
 				}),
+			reorderNode: (cardId, nodeId, targetIndex) =>
+				set((state) => {
+					const card = state.cards.find(({ id }) => id === cardId);
+					const sourceIndex =
+						card?.nodes.findIndex(({ id }) => id === nodeId) ?? -1;
+					if (!card || sourceIndex < 0) return;
+					const [node] = card.nodes.splice(sourceIndex, 1);
+					if (!node) return;
+					card.nodes.splice(
+						Math.max(0, Math.min(targetIndex, card.nodes.length)),
+						0,
+						node,
+					);
+				}),
 			resetEditor: () => set(createDefaultState()),
 		})),
 		{
 			name: EDITOR_SESSION_STORAGE_KEY,
-			version: 5,
+			version: 6,
 			storage: createJSONStorage(() =>
 				typeof window === "undefined" ? fallbackStorage : window.sessionStorage,
 			),
@@ -452,13 +527,25 @@ export const useEditorStore = create<EditorState>()(
 			},
 			merge: (persistedState, currentState) => {
 				const persistedEditorState = persistedState as Partial<EditorState>;
+				const persistedCards = persistedEditorState.cards?.map(normalizeCard);
+				const cards = persistedCards?.length
+					? persistedCards
+					: currentState.cards;
+				const selectedCardId = cards.some(
+					(card) => card.id === persistedEditorState.selectedCardId,
+				)
+					? (persistedEditorState.selectedCardId ?? cards[0]?.id ?? null)
+					: (cards[0]?.id ?? null);
 
 				return {
 					...currentState,
 					...persistedEditorState,
-					cards:
-						persistedEditorState.cards?.map(normalizeCard) ??
-						currentState.cards,
+					cards,
+					selectedCardId,
+					selectedNodeId:
+						selectedCardId === persistedEditorState.selectedCardId
+							? (persistedEditorState.selectedNodeId ?? null)
+							: null,
 				};
 			},
 			skipHydration: true,

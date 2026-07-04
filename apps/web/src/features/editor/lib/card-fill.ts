@@ -10,12 +10,12 @@ import type {
 } from "#/features/editor/types";
 
 const DEFAULT_STOPS: GradientStop[] = [
-	{ id: "start", color: "#FFFDF8", position: 0 },
+	{ id: "start", color: "#FFFDF8", position: 1 },
 	{ id: "end", color: "#111111", position: 100 },
 ];
 
 export const DEFAULT_PAPER_SETTINGS: PaperTextureSettings = {
-	colorFront: "#9FADBC",
+	colorFront: "#4457FD",
 	colorBack: "#FFFFFF",
 	contrast: 0.3,
 	roughness: 0.4,
@@ -26,8 +26,8 @@ export const DEFAULT_PAPER_SETTINGS: PaperTextureSettings = {
 };
 
 export const DEFAULT_FLUTED_GLASS_SETTINGS: FlutedGlassSettings = {
-	colorBack: "#D9E6EF",
-	colorShadow: "#000000",
+	colorBack: "#E8EAFF",
+	colorShadow: "#2433B5",
 	colorHighlight: "#FFFFFF",
 	size: 0.5,
 	angle: 0,
@@ -43,8 +43,8 @@ export const DEFAULT_IMAGE_SETTINGS: ImageFillSettings = {
 };
 
 export const DEFAULT_HALFTONE_SETTINGS: HalftoneTextureSettings = {
-	colorBack: "#F2F1E8",
-	colorFront: "#2B2B2B",
+	colorBack: "#F1F2FF",
+	colorFront: "#4457FD",
 	size: 0.5,
 	radius: 1.25,
 	contrast: 0.4,
@@ -55,11 +55,11 @@ export const DEFAULT_HALFTONE_SETTINGS: HalftoneTextureSettings = {
 };
 
 export const DEFAULT_HALFTONE_CMYK_SETTINGS: HalftoneCmykTextureSettings = {
-	colorBack: "#FBFAF5",
-	colorC: "#00B4FF",
-	colorM: "#FC519F",
-	colorY: "#FFD800",
-	colorK: "#231F20",
+	colorBack: "#F1F2FF",
+	colorC: "#4457FD",
+	colorM: "#7C3AED",
+	colorY: "#A5B4FC",
+	colorK: "#172066",
 	size: 0.2,
 	contrast: 1,
 	softness: 1,
@@ -127,6 +127,40 @@ export function createDefaultTextureFill(
 				settings: DEFAULT_PAPER_SETTINGS,
 			};
 	}
+}
+
+function clampIntegerPercent(value: number) {
+	return Math.min(100, Math.max(1, Math.round(value)));
+}
+
+export function normalizeCardFillPercentages(fill: CardFill): CardFill {
+	if (fill.type === "solid") return fill;
+	if (fill.type === "image") {
+		return {
+			...fill,
+			settings: {
+				...fill.settings,
+				originX: clampIntegerPercent(fill.settings.originX),
+				originY: clampIntegerPercent(fill.settings.originY),
+			},
+		};
+	}
+
+	const normalizedFill = {
+		...fill,
+		stops: fill.stops.map((stop) => ({
+			...stop,
+			position: clampIntegerPercent(stop.position),
+		})),
+	};
+
+	return fill.type === "radial-gradient"
+		? {
+				...normalizedFill,
+				centerX: clampIntegerPercent(fill.centerX),
+				centerY: clampIntegerPercent(fill.centerY),
+			}
+		: normalizedFill;
 }
 
 export function getCardFillStyle(fill: CardFill): React.CSSProperties {

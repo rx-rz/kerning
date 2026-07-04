@@ -2,17 +2,17 @@ import { ColorField } from "#/components/ui/color-field";
 import { Field, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "#/components/ui/select";
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "#/components/ui/popover";
 import { Slider } from "#/components/ui/slider";
+import { ChevronDown } from "lucide-react";
 import {
 	CardFillInspector,
 	CardTextureInspector,
 } from "#/features/editor/components/card-fill-inspector";
+import { InspectorSection } from "#/features/editor/components/inspector-section";
 import {
 	MAX_CARD_HEIGHT,
 	MAX_CARD_WIDTH,
@@ -33,6 +33,8 @@ const ASPECT_RATIOS: Array<{
 	{ value: "3:2", label: "Classic · 3:2" },
 	{ value: "business-card", label: "Business Card" },
 ];
+
+const BORDER_STYLES = ["solid", "dashed", "dotted", "double"] as const;
 
 type CardInspectorProps = {
 	card: EditorCard;
@@ -62,8 +64,8 @@ export function CardInspector({ card }: CardInspectorProps) {
 	}
 
 	return (
-		<div className="divide-y divide-border pt-6">
-			<InspectorSection title="">
+		<div className="space-y-3 px-4 py-5">
+			<div className="space-y-2">
 				<Field className="relative space-y-0">
 					<FieldLabel
 						className="pointer-events-none absolute top-1/2 left-4 z-10 -translate-y-1/2 capitalize"
@@ -80,84 +82,95 @@ export function CardInspector({ card }: CardInspectorProps) {
 						}
 					/>
 				</Field>
-			</InspectorSection>
-
-			<InspectorSection title="Settings">
-				<Field className="space-y-0">
-					<Select
-						value={card.settings.aspectRatio}
-						onValueChange={(aspectRatio: CardAspectRatio) =>
-							updateCardSettings(card.id, { aspectRatio })
-						}
-					>
-						<SelectTrigger id="card-aspect-ratio" className="w-full gap-4">
-							<FieldLabel
-								className="pointer-events-none mr-auto shrink-0 capitalize"
-								htmlFor="card-aspect-ratio"
-							>
-								Aspect Ratio
-							</FieldLabel>
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent align="end">
+				<Popover>
+					<PopoverTrigger asChild>
+						<button
+							type="button"
+							aria-label="Aspect ratio"
+							className="flex min-h-12 w-full items-center rounded-lg border border-hairline bg-white px-3 text-xs"
+						>
+							<span className="font-semibold">Aspect ratio</span>
+							<span className="ml-auto text-muted-foreground">
+								{
+									ASPECT_RATIOS.find(
+										({ value }) => value === card.settings.aspectRatio,
+									)?.label
+								}
+							</span>
+							<ChevronDown className="ml-2 size-3" />
+						</button>
+					</PopoverTrigger>
+					<PopoverContent align="end" className="w-[var(--radix-popover-trigger-width)]">
+						<fieldset className="grid grid-cols-2 gap-1.5">
+							<legend className="sr-only">Aspect ratio</legend>
 							{ASPECT_RATIOS.map((aspectRatio) => (
-								<SelectItem key={aspectRatio.value} value={aspectRatio.value}>
-									{aspectRatio.label}
-								</SelectItem>
+								<label key={aspectRatio.value} className="cursor-pointer">
+									<input
+										type="radio"
+										name="card-aspect-ratio"
+										className="peer sr-only"
+										checked={card.settings.aspectRatio === aspectRatio.value}
+										onChange={() =>
+											updateCardSettings(card.id, {
+												aspectRatio: aspectRatio.value,
+											})
+										}
+									/>
+									<span className="flex flex-col items-center gap-1 rounded-lg border border-hairline bg-white p-1 text-center text-[10px] font-semibold text-muted-foreground peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground">
+										<AspectRatioSwatch value={aspectRatio.value} />
+										{aspectRatio.label}
+									</span>
+								</label>
 							))}
-						</SelectContent>
-					</Select>
-				</Field>
-			</InspectorSection>
-
-			<InspectorSection title="Size">
-				<div className="grid grid-cols-2 gap-2">
-					<NumberField
+						</fieldset>
+					</PopoverContent>
+				</Popover>
+				<NumberField
 						id="card-width"
 						label="Width"
 						min={MIN_CARD_DIMENSION}
 						max={MAX_CARD_WIDTH}
 						value={card.width}
 						onChange={(value) => updateNumericValue("width", value)}
-					/>
-					<NumberField
+				/>
+				<NumberField
 						id="card-height"
 						label="Height"
 						min={MIN_CARD_DIMENSION}
 						max={MAX_CARD_HEIGHT}
 						value={card.height}
 						onChange={(value) => updateNumericValue("height", value)}
-					/>
-				</div>
-			</InspectorSection>
+				/>
+			</div>
 
-			<InspectorSection title="Appearance">
-				<Slider
-					label="Opacity"
-					value={[card.settings.opacity]}
-					min={0}
-					max={1}
-					step={0.01}
-					showTicks={false}
-					snapToDeciles={false}
-					onValueChange={([opacity]) => {
-						if (opacity !== undefined) updateCardSettings(card.id, { opacity });
-					}}
-				/>
-				<Slider
-					label="Blur"
-					value={[card.settings.blur]}
-					min={0}
-					max={40}
-					step={1}
-					showTicks={false}
-					snapToDeciles={false}
-					onValueChange={([blur]) => {
-						if (blur !== undefined) updateCardSettings(card.id, { blur });
-					}}
-				/>
-				<div className="space-y-3 rounded-lg border border-border p-3">
-					<h4 className="text-xs font-semibold">Border</h4>
+			<InspectorSection title="Surface">
+					<Slider
+						label="Opacity"
+						value={[card.settings.opacity]}
+						min={0}
+						max={1}
+						step={0.01}
+						showTicks={false}
+						snapToDeciles={false}
+						onValueChange={([opacity]) => {
+							if (opacity !== undefined)
+								updateCardSettings(card.id, { opacity });
+						}}
+					/>
+					<Slider
+						label="Blur"
+						value={[card.settings.blur]}
+						min={0}
+						max={10}
+						step={1}
+						showTicks={false}
+						snapToDeciles={false}
+						onValueChange={([blur]) => {
+							if (blur !== undefined) updateCardSettings(card.id, { blur });
+						}}
+					/>
+			</InspectorSection>
+			<InspectorSection title="Border">
 					<NumberField
 						id="card-border-width"
 						label="Border Width"
@@ -173,33 +186,12 @@ export function CardInspector({ card }: CardInspectorProps) {
 							}
 						}}
 					/>
-					<Field className="space-y-0">
-						<Select
-							value={card.settings.borderStyle}
-							onValueChange={(borderStyle) =>
-								updateCardSettings(card.id, {
-									borderStyle: borderStyle as typeof card.settings.borderStyle,
-								})
-							}
-						>
-							<SelectTrigger id="card-border-style" className="w-full">
-								<FieldLabel
-									className="pointer-events-none mr-auto"
-									htmlFor="card-border-style"
-								>
-									Style
-								</FieldLabel>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent align="end">
-								{["solid", "dashed", "dotted", "double"].map((style) => (
-									<SelectItem key={style} value={style}>
-										{style}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</Field>
+					<BorderStyleSelect
+						value={card.settings.borderStyle}
+						onChange={(borderStyle) =>
+							updateCardSettings(card.id, { borderStyle })
+						}
+					/>
 					<ColorField
 						label="Color"
 						ariaLabel="Border color"
@@ -208,36 +200,105 @@ export function CardInspector({ card }: CardInspectorProps) {
 							updateCardSettings(card.id, { borderColor })
 						}
 					/>
-				</div>
-				<CardFillInspector
-					fill={card.settings.fill}
-					onChange={(fill) => updateCardSettings(card.id, { fill })}
-				/>
-				<CardTextureInspector
-					texture={card.settings.texture}
-					onChange={(texture) => updateCardSettings(card.id, { texture })}
-				/>
+			</InspectorSection>
+			<InspectorSection title="Color & fill">
+					<CardFillInspector
+						fill={card.settings.fill}
+						onChange={(fill) => updateCardSettings(card.id, { fill })}
+					/>
+			</InspectorSection>
+			<InspectorSection title="Texture">
+					<CardTextureInspector
+						texture={card.settings.texture}
+						onChange={(texture) => updateCardSettings(card.id, { texture })}
+					/>
 			</InspectorSection>
 		</div>
 	);
 }
 
-function InspectorSection({
-	title,
-	children,
+function BorderStyleSelect({
+	value,
+	onChange,
 }: {
-	title: string;
-	children: React.ReactNode;
+	value: (typeof BORDER_STYLES)[number];
+	onChange: (value: (typeof BORDER_STYLES)[number]) => void;
 }) {
 	return (
-		<section className="space-y-3 px-5 py-4">
-			{title ? (
-				<h3 className="font-mono text-[10px] font-semibold capitalize tracking-[0.08em] text-muted-foreground">
-					{title}
-				</h3>
-			) : null}
-			{children}
-		</section>
+		<Popover>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					aria-label="Border style"
+					className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-hairline bg-white px-3 text-xs"
+				>
+					<BorderStyleSwatch value={value} />
+					<span className="font-semibold">Border style</span>
+					<span className="ml-auto capitalize text-muted-foreground">{value}</span>
+					<ChevronDown className="size-3" />
+				</button>
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-[var(--radix-popover-trigger-width)]">
+				<fieldset className="grid grid-cols-2 gap-1.5">
+					<legend className="sr-only">Border style</legend>
+					{BORDER_STYLES.map((style) => (
+						<label key={style} className="cursor-pointer">
+							<input
+								type="radio"
+								name="border-style"
+								className="peer sr-only"
+								checked={value === style}
+								onChange={() => onChange(style)}
+							/>
+							<span className="flex flex-col gap-1 rounded-lg border border-hairline bg-white p-1 text-center text-[10px] font-semibold capitalize text-muted-foreground peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground">
+								<BorderStyleSwatch value={style} large />
+								{style}
+							</span>
+						</label>
+					))}
+				</fieldset>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+function BorderStyleSwatch({
+	value,
+	large = false,
+}: {
+	value: (typeof BORDER_STYLES)[number];
+	large?: boolean;
+}) {
+	return (
+		<span
+			aria-hidden="true"
+			className={cn(
+				"flex shrink-0 items-center rounded-md border border-hairline bg-white px-2",
+				large ? "mx-auto size-12" : "size-7",
+			)}
+		>
+			<span
+				className="w-full border-t-2 border-foreground"
+				style={{ borderTopStyle: value }}
+			/>
+		</span>
+	);
+}
+
+function AspectRatioSwatch({ value }: { value: CardAspectRatio }) {
+	const dimensions: Record<CardAspectRatio, string> = {
+		"1:1": "h-9 w-9",
+		"4:5": "h-10 w-8",
+		"16:9": "h-7 w-11",
+		"9:16": "h-11 w-7",
+		"3:2": "h-8 w-11",
+		"business-card": "h-7 w-11",
+	};
+
+	return (
+		<span className="flex size-12 items-center justify-center" aria-hidden="true">
+			<span className={cn("rounded border-2 border-foreground/70 bg-primary/5", dimensions[value])} />
+		</span>
 	);
 }
 

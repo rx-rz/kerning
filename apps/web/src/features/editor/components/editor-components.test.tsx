@@ -75,16 +75,11 @@ describe("editor components", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("selects cards and deselects when empty canvas space is clicked", () => {
+	it("keeps the selected card when empty canvas space is clicked", () => {
 		renderEditorParts();
 
 		expect(screen.getByLabelText("Card Name")).toBeTruthy();
 		fireEvent.click(screen.getByLabelText("Editor preview"));
-		expect(screen.getByText("No card selected")).toBeTruthy();
-
-		fireEvent.click(
-			screen.getByRole("button", { name: "Select Untitled Card" }),
-		);
 		expect(screen.getByLabelText("Card Name")).toBeTruthy();
 	});
 
@@ -125,17 +120,15 @@ describe("editor components", () => {
 	it("layers texture independently from the selected fill", () => {
 		renderEditorParts();
 
+		fireEvent.click(screen.getByRole("button", { name: /Fill/ }));
 		fireEvent.click(screen.getByRole("radio", { name: "Linear" }));
+		fireEvent.click(screen.getByRole("button", { name: /Texture/ }));
 		fireEvent.click(screen.getByRole("radio", { name: "Paper" }));
 
 		expect(useEditorStore.getState().cards[0]?.settings).toMatchObject({
 			fill: { type: "linear-gradient" },
 			texture: { type: "texture", texture: "paper", opacity: 0.35 },
 		});
-		expect(screen.getByRole("radio", { name: "Linear" })).toHaveProperty(
-			"checked",
-			true,
-		);
 		expect(screen.getByRole("radio", { name: "Paper" })).toHaveProperty(
 			"checked",
 			true,
@@ -193,6 +186,7 @@ describe("editor components", () => {
 	it("offers image as an upload-based fill instead of a texture", async () => {
 		renderEditorParts();
 
+		fireEvent.click(screen.getByRole("button", { name: /Fill/ }));
 		const imageChoices = screen.getAllByRole("radio", { name: "Image" });
 		expect(imageChoices).toHaveLength(1);
 		fireEvent.click(imageChoices[0] as HTMLElement);
@@ -263,8 +257,9 @@ describe("editor components", () => {
 		fireEvent.click(
 			screen.getByRole("button", { name: "Add text to Untitled Card" }),
 		);
+		fireEvent.click(screen.getByText("Appearance"));
 
-		fireEvent.change(screen.getByLabelText("Font size"), {
+		fireEvent.change(screen.getByLabelText("Size"), {
 			target: { value: "32" },
 		});
 		fireEvent.change(screen.getByLabelText("Line height"), {
@@ -319,18 +314,14 @@ describe("editor components", () => {
 		});
 	});
 
-	it("offers text alignment and casing selectors", () => {
+	it("offers visual text alignment and casing choices", () => {
 		renderEditorParts();
 		fireEvent.click(
 			screen.getByRole("button", { name: "Add text to Untitled Card" }),
 		);
 
-		const alignmentControl = screen.getByLabelText("Alignment");
-		const casingControl = screen.getByLabelText("Casing");
-		expect(alignmentControl.getAttribute("role")).toBe("combobox");
-		expect(alignmentControl.textContent).toContain("Left");
-		expect(casingControl.getAttribute("role")).toBe("combobox");
-		expect(casingControl.textContent).toContain("Original");
+		expect(screen.getByRole("radio", { name: "Left" })).toHaveProperty("checked", true);
+		expect(screen.getByRole("radio", { name: "Original" })).toHaveProperty("checked", true);
 	});
 
 	it("adds an image node and accepts its source", () => {
@@ -351,6 +342,47 @@ describe("editor components", () => {
 			"src",
 			"https://example.com/specimen.jpg",
 		);
+	});
+
+	it("adds a shape node and exposes simple color and size controls", () => {
+		renderEditorParts();
+
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add shape to Untitled Card" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Horizontal line" }));
+
+		const node = useEditorStore.getState().cards[0]?.nodes[0];
+		expect(node).toMatchObject({ type: "shape", shapeType: "line" });
+		fireEvent.change(screen.getByLabelText("Shape color hex code"), {
+			target: { value: "#ff3366" },
+		});
+		fireEvent.change(screen.getByLabelText("Size"), {
+			target: { value: "144" },
+		});
+
+		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
+			color: "#FF3366",
+			width: 144,
+			height: 144,
+		});
+	});
+
+	it("opens the template sidebar and applies a square album-cover preset", () => {
+		render(<EditorPage />);
+
+		fireEvent.click(
+			screen.getByRole("button", { name: "Open templates for Untitled Card" }),
+		);
+		expect(screen.getByRole("heading", { name: "Templates" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: /brat/ }));
+
+		expect(useEditorStore.getState().cards[0]).toMatchObject({
+			name: "brat",
+			width: 500,
+			height: 500,
+			settings: { aspectRatio: "1:1" },
+		});
 	});
 
 	it("applies and resets image composition and effects", () => {
@@ -790,18 +822,9 @@ describe("editor components", () => {
 		).toBeNull();
 	});
 
-	it("shows an empty canvas state and can add the first card", () => {
+	it("does not offer deletion when only one card remains", () => {
 		renderEditorParts();
-		fireEvent.click(
-			screen.getByRole("button", { name: "Delete Untitled Card" }),
-		);
-		expect(screen.getByText("No cards yet")).toBeTruthy();
-		expect(screen.queryByLabelText("Card navigation")).toBeNull();
-
-		fireEvent.click(
-			screen.getByRole("button", { name: "Add your first card" }),
-		);
+		expect(screen.queryByRole("button", { name: "Delete Untitled Card" })).toBeNull();
 		expect(useEditorStore.getState().cards).toHaveLength(1);
-		expect(screen.getByDisplayValue("Untitled Card")).toBeTruthy();
 	});
 });

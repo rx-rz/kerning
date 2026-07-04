@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { ChevronDown, Plus, Trash2, Upload } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "#/components/ui/button";
 import { ColorField } from "#/components/ui/color-field";
@@ -13,6 +13,11 @@ import {
 	SelectValue,
 } from "#/components/ui/select";
 import { Slider } from "#/components/ui/slider";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "#/components/ui/popover";
 import { deleteEditorImage, replaceEditorImage } from "#/db/image-db";
 import {
 	createDefaultFill,
@@ -50,18 +55,40 @@ export function CardFillInspector({
 }) {
 	return (
 		<div className="space-y-3">
-			<ChoiceGroup<CardFill["type"]>
-				label="Fill"
-				value={fill.type}
-				options={FILL_TYPES}
-				onChange={(type) => {
-					if (type === fill.type) return;
-					if (fill.type === "image" && fill.imageId) {
-						void deleteEditorImage(fill.imageId);
-					}
-					onChange(createDefaultFill(type));
-				}}
-			/>
+			<Popover>
+				<PopoverTrigger asChild>
+					<button type="button" className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-hairline bg-white px-3 text-xs">
+						<FillSwatch type={fill.type} />
+						<span className="font-semibold">Fill</span>
+						<span className="ml-auto text-muted-foreground">{FILL_TYPES.find(({ value }) => value === fill.type)?.label}</span>
+						<ChevronDown className="size-3" />
+					</button>
+				</PopoverTrigger>
+				<PopoverContent align="end" className="w-[var(--radix-popover-trigger-width)]">
+					<fieldset className="grid grid-cols-2 gap-1.5">
+						<legend className="sr-only">Fill</legend>
+						{FILL_TYPES.map((option) => (
+							<label key={option.value} className="cursor-pointer">
+								<input
+									type="radio"
+									name="card-fill"
+									className="peer sr-only"
+									checked={fill.type === option.value}
+									onChange={() => {
+										if (option.value === fill.type) return;
+										if (fill.type === "image" && fill.imageId) void deleteEditorImage(fill.imageId);
+										onChange(createDefaultFill(option.value));
+									}}
+								/>
+								<span className="flex flex-col gap-1 rounded-lg border border-hairline bg-white p-1 text-center text-[10px] font-semibold text-muted-foreground peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground">
+									<FillSwatch type={option.value} large />
+									{option.label}
+								</span>
+							</label>
+						))}
+					</fieldset>
+				</PopoverContent>
+			</Popover>
 
 			{fill.type === "solid" ? (
 				<ColorField
@@ -112,19 +139,21 @@ function GradientInspector({
 					onChange={(angle) => onChange({ ...fill, angle })}
 				/>
 			) : (
-				<div className="grid grid-cols-2 gap-2">
+				<div className="space-y-2">
 					<RangeField
 						label="Center X"
 						value={fill.centerX}
-						min={0}
+						min={1}
 						max={100}
+						step={1}
 						onChange={(centerX) => onChange({ ...fill, centerX })}
 					/>
 					<RangeField
 						label="Center Y"
 						value={fill.centerY}
-						min={0}
+						min={1}
 						max={100}
+						step={1}
 						onChange={(centerY) => onChange({ ...fill, centerY })}
 					/>
 				</div>
@@ -152,13 +181,27 @@ function GradientInspector({
 					</Button>
 				</div>
 				{fill.stops.map((stop, index) => (
-					<div key={stop.id} className="rounded-lg border border-border p-2">
-						<div className="flex items-center gap-2">
+					<div key={stop.id} className="flex items-center gap-2">
+						<span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted font-mono text-[10px] font-semibold text-muted-foreground">
+							{index + 1}
+						</span>
+						<div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
 							<ColorField
 								label={`Stop ${index + 1}`}
+								ariaLabel={`Stop ${index + 1}`}
+								hideLabel
 								value={stop.color}
 								onChange={(color) => updateStop(stop.id, { color })}
 							/>
+							<RangeField
+								label="Position"
+								value={stop.position}
+								min={1}
+								max={100}
+								step={1}
+								onChange={(position) => updateStop(stop.id, { position })}
+							/>
+						</div>
 							{fill.stops.length > 2 ? (
 								<Button
 									type="button"
@@ -175,14 +218,6 @@ function GradientInspector({
 									<Trash2 />
 								</Button>
 							) : null}
-						</div>
-						<RangeField
-							label="Position"
-							value={stop.position}
-							min={0}
-							max={100}
-							onChange={(position) => updateStop(stop.id, { position })}
-						/>
 					</div>
 				))}
 			</div>
@@ -197,47 +232,101 @@ export function CardTextureInspector({
 	texture: TextureCardFill | null;
 	onChange: (texture: TextureCardFill | null) => void;
 }) {
-	const [areSettingsOpen, setAreSettingsOpen] = useState(true);
 	const selectedTexture = texture?.texture ?? "none";
 
 	return (
 		<div className="space-y-3">
-			<ChoiceGroup<TextureChoice>
-				label="Texture"
-				value={selectedTexture}
-				options={[{ value: "none", label: "None" }, ...TEXTURES]}
-				onChange={(nextTexture) =>
-					onChange(
-						nextTexture === "none"
-							? null
-							: createDefaultTextureFill(
-									nextTexture as TextureCardFill["texture"],
-								),
-					)
-				}
-			/>
+			<Popover>
+				<PopoverTrigger asChild>
+					<button
+						type="button"
+						className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-hairline bg-white px-3 text-xs"
+					>
+						<TextureSwatch texture={selectedTexture} />
+						<span className="font-semibold">Texture</span>
+						<span className="ml-auto capitalize text-muted-foreground">
+							{TEXTURES.find(({ value }) => value === selectedTexture)?.label ?? "None"}
+						</span>
+						<ChevronDown className="size-3" />
+					</button>
+				</PopoverTrigger>
+				<PopoverContent align="end" className="w-[var(--radix-popover-trigger-width)]">
+					<fieldset className="grid grid-cols-3 gap-1.5">
+						<legend className="sr-only">Texture</legend>
+						{([{ value: "none", label: "None" }, ...TEXTURES] as Array<{ value: TextureChoice; label: string }>).map((option) => (
+							<label key={option.value} className="cursor-pointer">
+								<input
+									type="radio"
+									name="card-texture"
+									className="peer sr-only"
+									checked={selectedTexture === option.value}
+									onChange={() => onChange(option.value === "none" ? null : createDefaultTextureFill(option.value))}
+								/>
+				<span className="flex flex-col gap-1 rounded-lg border border-hairline bg-white p-1 text-center text-[10px] text-muted-foreground peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground">
+									<TextureSwatch texture={option.value} large />
+									{option.label}
+								</span>
+							</label>
+						))}
+					</fieldset>
+				</PopoverContent>
+			</Popover>
 
 			{texture ? (
-				<details
-					className="group rounded-lg border border-border"
-					open={areSettingsOpen}
-					onToggle={(event) => setAreSettingsOpen(event.currentTarget.open)}
-				>
-					<summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3 text-xs font-semibold">
-						Texture settings
-						<ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-					</summary>
-					<div className="space-y-3 border-t border-border p-3">
+				<div className="space-y-3">
 						<RangeField
 							label="Opacity"
 							value={texture.opacity}
 							onChange={(opacity) => onChange({ ...texture, opacity })}
 						/>
 						<TextureSettings fill={texture} onChange={onChange} />
-					</div>
-				</details>
+				</div>
 			) : null}
 		</div>
+	);
+}
+
+function TextureSwatch({ texture, large = false }: { texture: TextureChoice; large?: boolean }) {
+	const background =
+		texture === "paper"
+			? "repeating-radial-gradient(circle at 30% 40%,#4457fd 0 1px,#f1f2ff 1px 4px)"
+			: texture === "fluted-glass"
+				? "repeating-linear-gradient(90deg,#c7ccff 0 4px,#fff 4px 7px,#8792ff 7px 9px)"
+				: texture === "halftone"
+					? "radial-gradient(circle,#4457fd 1px,transparent 1.5px) 0 0/6px 6px,#f1f2ff"
+					: texture === "halftone-cmyk"
+						? "radial-gradient(circle at 35% 35%,#4457fd 0 1px,transparent 2px),radial-gradient(circle at 65% 65%,#7c3aed 0 1px,transparent 2px),#c7ccff"
+						: "linear-gradient(135deg,#fff 45%,#d7dbe0 45% 55%,#fff 55%)";
+
+	return <span aria-hidden="true" className={large ? "mx-auto size-12 rounded-md border border-hairline" : "size-7 shrink-0 rounded-md border border-hairline"} style={{ background }} />;
+}
+
+function FillSwatch({
+	type,
+	large = false,
+}: {
+	type: CardFill["type"];
+	large?: boolean;
+}) {
+	const background =
+		type === "solid"
+			? "#dbeafe"
+			: type === "linear-gradient"
+				? "linear-gradient(135deg,#f472b6,#60a5fa)"
+				: type === "radial-gradient"
+					? "radial-gradient(circle,#fef08a 0 20%,#fb7185 55%,#818cf8)"
+					: "linear-gradient(135deg,#d1d5db 25%,transparent 25%) 0 0/8px 8px,linear-gradient(315deg,#e5e7eb 25%,#fff 25%) 0 0/8px 8px";
+
+	return (
+		<span
+			aria-hidden="true"
+			className={
+				large
+					? "mx-auto size-12 rounded-md border border-black/10"
+					: "size-7 shrink-0 rounded-md border border-black/10"
+			}
+			style={{ background }}
+		/>
 	);
 }
 
@@ -305,11 +394,11 @@ function ImageFillSettings({
 					})
 				}
 			/>
-			<div className="grid grid-cols-2 gap-2">
+			<div className="space-y-2">
 				<RangeField
 					label="Origin X"
 					value={fill.settings.originX}
-					min={0}
+					min={1}
 					max={100}
 					step={1}
 					onChange={(originX) =>
@@ -322,7 +411,7 @@ function ImageFillSettings({
 				<RangeField
 					label="Origin Y"
 					value={fill.settings.originY}
-					min={0}
+					min={1}
 					max={100}
 					step={1}
 					onChange={(originY) =>
@@ -507,7 +596,7 @@ function TextureSettings({
 				value={fill.settings.colorBack}
 				onChange={(colorBack) => update({ colorBack })}
 			/>
-			<div className="grid grid-cols-2 gap-2">
+			<div className="space-y-2">
 				{(["colorC", "colorM", "colorY", "colorK"] as const).map((key) => (
 					<ColorField
 						key={key}
@@ -565,7 +654,7 @@ function ColorPair({
 }) {
 	const settings = fill.settings as unknown as Record<string, unknown>;
 	return (
-		<div className="grid grid-cols-2 gap-2">
+		<div className="space-y-2">
 			{keys.map((key, index) => (
 				<ColorField
 					key={key}
@@ -648,7 +737,7 @@ function ToggleField({
 	onChange: (value: boolean) => void;
 }) {
 	return (
-		<label className="flex min-h-10 items-center justify-between rounded-lg bg-background px-3 text-xs font-semibold shadow-[inset_0_0_0_1px_var(--line-hair)]">
+		<label className="flex min-h-12 items-center justify-between rounded-lg bg-white px-3 text-xs font-semibold shadow-[inset_0_0_0_1px_var(--line-hair)]">
 			<span>{label}</span>
 			<input
 				type="checkbox"
@@ -656,45 +745,5 @@ function ToggleField({
 				onChange={(event) => onChange(event.target.checked)}
 			/>
 		</label>
-	);
-}
-
-function ChoiceGroup<T extends string>({
-	label,
-	value,
-	options,
-	onChange,
-}: {
-	label: string;
-	value: T;
-	options: Array<{ value: T; label: string }>;
-	onChange: (value: T) => void;
-}) {
-	const name = useId();
-
-	return (
-		<fieldset className="flex items-start justify-between gap-3">
-			<legend className="sr-only">{label}</legend>
-			<span aria-hidden="true" className="pt-3 text-xs font-semibold">
-				{label}
-			</span>
-			<div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
-				{options.map((option) => (
-					<label key={option.value} className="relative min-w-0 cursor-pointer">
-						<input
-							type="radio"
-							name={name}
-							value={option.value}
-							checked={value === option.value}
-							className="peer sr-only"
-							onChange={() => onChange(option.value)}
-						/>
-						<span className="flex min-h-10 items-center justify-center rounded-lg px-2 text-center text-[11px] font-semibold text-muted-foreground shadow-[inset_0_0_0_1px_var(--line-hair)] transition-[background-color,color,box-shadow] hover:bg-muted hover:text-foreground peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:shadow-[inset_0_0_0_1px_var(--primary)] peer-focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_22%,transparent),inset_0_0_0_1px_var(--ring)]">
-							{option.label}
-						</span>
-					</label>
-				))}
-			</div>
-		</fieldset>
 	);
 }
