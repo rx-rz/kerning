@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorCanvas } from "#/features/editor/components/editor-canvas";
 import { EditorInspector } from "#/features/editor/components/editor-inspector";
 import { EditorPage } from "#/features/editor/components/editor-page";
+import { DEFAULT_PAPER_SETTINGS } from "#/features/editor/lib/card-fill";
 import {
 	EDITOR_SESSION_STORAGE_KEY,
 	useEditorStore,
@@ -83,6 +84,20 @@ describe("editor components", () => {
 		expect(screen.getByLabelText("Card Name")).toBeTruthy();
 	});
 
+	it("opens the system glyph viewer and updates its preview", () => {
+		render(<EditorPage />);
+		fireEvent.click(screen.getByRole("button", { name: "Open glyph viewer" }));
+
+		expect(screen.getByRole("dialog", { name: "Glyph viewer" })).toBeTruthy();
+		expect(screen.getByLabelText("Available glyphs")).toBeTruthy();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Select A, Unicode 0041" }),
+		);
+		expect(
+			screen.getByLabelText("Selected glyph preview").textContent,
+		).toContain("A");
+	});
+
 	it("updates the selected card from inspector controls", () => {
 		renderEditorParts();
 
@@ -102,6 +117,15 @@ describe("editor components", () => {
 		expect(
 			screen.getByRole("button", { name: "Select Editorial Cover" }),
 		).toBeTruthy();
+	});
+
+	it("opens every inspector section by default without carets", () => {
+		renderEditorParts();
+		const sections = Array.from(document.querySelectorAll("details"));
+
+		expect(sections.length).toBeGreaterThan(0);
+		expect(sections.every((section) => section.open)).toBe(true);
+		expect(document.querySelector("details summary svg")).toBeNull();
 	});
 
 	it("updates the card solid fill from the inspector", () => {
@@ -209,6 +233,19 @@ describe("editor components", () => {
 		expect(screen.queryByText("Pixel size")).toBeNull();
 		expect(screen.getByText("Background size")).toBeTruthy();
 
+		fireEvent.change(screen.getByLabelText("Image URL"), {
+			target: { value: "https://example.com/card-background.jpg" },
+		});
+		expect(useEditorStore.getState().cards[0]?.settings.fill).toMatchObject({
+			type: "image",
+			imageId: null,
+			src: "https://example.com/card-background.jpg",
+		});
+		expect(
+			(document.querySelector('[data-card-layer="image"]') as HTMLElement).style
+				.backgroundImage,
+		).toContain("card-background.jpg");
+
 		const upload = screen.getByLabelText("Upload image fill");
 		const file = new File(["image"], "cover.png", { type: "image/png" });
 		await act(async () => {
@@ -219,10 +256,11 @@ describe("editor components", () => {
 		expect(useEditorStore.getState().cards[0]?.settings.fill).toMatchObject({
 			type: "image",
 			imageId: "replacement-image-id",
+			src: "",
 		});
 	});
 
-	it("edits multiline text without changing its container geometry", () => {
+	it("expands a text node when multiline copy needs more room", () => {
 		renderEditorParts();
 
 		fireEvent.click(
@@ -246,7 +284,7 @@ describe("editor components", () => {
 			text: "Kerning is\ncontext\nin motion",
 			fontType: "primary",
 			fontSize: 20,
-			height: 58,
+			height: 70,
 		});
 		fireEvent.blur(textArea);
 		expect(textArea).toHaveProperty("readOnly", true);
@@ -320,8 +358,14 @@ describe("editor components", () => {
 			screen.getByRole("button", { name: "Add text to Untitled Card" }),
 		);
 
-		expect(screen.getByRole("radio", { name: "Left" })).toHaveProperty("checked", true);
-		expect(screen.getByRole("radio", { name: "Original" })).toHaveProperty("checked", true);
+		expect(screen.getByRole("radio", { name: "Left" })).toHaveProperty(
+			"checked",
+			true,
+		);
+		expect(screen.getByRole("radio", { name: "Original" })).toHaveProperty(
+			"checked",
+			true,
+		);
 	});
 
 	it("adds an image node and accepts its source", () => {
@@ -350,6 +394,7 @@ describe("editor components", () => {
 		fireEvent.click(
 			screen.getByRole("button", { name: "Add shape to Untitled Card" }),
 		);
+		expect(screen.queryByRole("button", { name: "All" })).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Horizontal line" }));
 
 		const node = useEditorStore.getState().cards[0]?.nodes[0];
@@ -368,6 +413,27 @@ describe("editor components", () => {
 		});
 	});
 
+	it("applies a texture within a shape silhouette", async () => {
+		renderEditorParts();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add shape to Untitled Card" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Geometry" }));
+		fireEvent.click(screen.getByRole("button", { name: "Rectangle" }));
+		fireEvent.click(screen.getByRole("button", { name: /Texture/ }));
+		fireEvent.click(screen.getByRole("radio", { name: "Paper" }));
+
+		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
+			type: "shape",
+			texture: { type: "texture", texture: "paper", opacity: 0.35 },
+		});
+		await waitFor(() =>
+			expect(
+				document.querySelector('[data-shape-layer="texture"]'),
+			).toBeTruthy(),
+		);
+	});
+
 	it("opens the template sidebar and applies a square album-cover preset", () => {
 		render(<EditorPage />);
 
@@ -381,8 +447,129 @@ describe("editor components", () => {
 			name: "brat",
 			width: 500,
 			height: 500,
-			settings: { aspectRatio: "1:1" },
+			settings: {
+				aspectRatio: "1:1",
+				fill: { type: "image", src: expect.stringContaining("cdn.cosmos.so") },
+			},
 		});
+	});
+
+	it("stacks the layer controls vertically", () => {
+		renderEditorParts();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add text to Untitled Card" }),
+		);
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add image to Untitled Card" }),
+		);
+		fireEvent.click(
+			screen.getByRole("button", { name: "Toggle layers for Untitled Card" }),
+		);
+
+		expect(screen.getByLabelText("Untitled Card layers").className).toContain(
+			"flex-col",
+		);
+	});
+
+	it("keeps a selected node at its real layer depth", () => {
+		renderEditorParts();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add text to Untitled Card" }),
+		);
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add image to Untitled Card" }),
+		);
+		const card = useEditorStore.getState().cards[0];
+		const bottomNode = card?.nodes[0];
+		if (!card || !bottomNode) throw new Error("Expected two editor nodes");
+
+		act(() => useEditorStore.getState().selectNode(card.id, bottomNode.id));
+		const selectedElement = document.querySelector(
+			`[data-editor-node][style*="z-index: 5"]`,
+		);
+		expect(selectedElement).toBeTruthy();
+	});
+
+	it("deletes image layers and cleans up their stored image", () => {
+		renderEditorParts();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add image to Untitled Card" }),
+		);
+		const card = useEditorStore.getState().cards[0];
+		const image = card?.nodes[0];
+		if (!card || !image || image.type !== "image") {
+			throw new Error("Expected an image node");
+		}
+		act(() =>
+			useEditorStore
+				.getState()
+				.updateNode(card.id, image.id, { imageId: "stored-image" }),
+		);
+		fireEvent.click(
+			screen.getByRole("button", { name: "Toggle layers for Untitled Card" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Delete Image layer" }));
+
+		expect(imageDbMocks.deleteEditorImage).toHaveBeenCalledWith("stored-image");
+		expect(useEditorStore.getState().cards[0]?.nodes).toHaveLength(0);
+	});
+
+	it("sorts a whole layer row with pointer input", () => {
+		Object.defineProperty(HTMLElement.prototype, "setPointerCapture", {
+			configurable: true,
+			value: vi.fn(),
+		});
+		renderEditorParts();
+		for (let index = 0; index < 3; index += 1) {
+			fireEvent.click(
+				screen.getByRole("button", { name: "Add text to Untitled Card" }),
+			);
+		}
+		const card = useEditorStore.getState().cards[0];
+		if (!card) throw new Error("Expected an editor card");
+		const [bottom, middle, top] = card.nodes;
+		if (!bottom || !middle || !top) throw new Error("Expected three layers");
+		fireEvent.click(
+			screen.getByRole("button", { name: "Toggle layers for Untitled Card" }),
+		);
+
+		const visualIds = [top.id, middle.id, bottom.id];
+		visualIds.forEach((id, index) => {
+			const row = document.querySelector<HTMLElement>(
+				`[data-layer-id="${id}"]`,
+			);
+			if (!row) throw new Error("Expected a layer row");
+			Object.defineProperty(row, "getBoundingClientRect", {
+				configurable: true,
+				value: () => ({
+					top: index * 40,
+					bottom: index * 40 + 36,
+					height: 36,
+					left: 0,
+					right: 200,
+					width: 200,
+					x: 0,
+					y: index * 40,
+					toJSON: () => ({}),
+				}),
+			});
+		});
+		const topRow = document.querySelector<HTMLElement>(
+			`[data-layer-id="${top.id}"]`,
+		);
+		if (!topRow) throw new Error("Expected the top layer row");
+		fireEvent.pointerDown(topRow, {
+			button: 0,
+			pointerId: 1,
+			clientX: 10,
+			clientY: 10,
+		});
+		fireEvent.pointerMove(topRow, { pointerId: 1, clientX: 10, clientY: 130 });
+		fireEvent.pointerUp(topRow, { pointerId: 1, clientX: 10, clientY: 130 });
+
+		expect(
+			useEditorStore.getState().cards[0]?.nodes.map((node) => node.id),
+		).toEqual([top.id, bottom.id, middle.id]);
 	});
 
 	it("applies and resets image composition and effects", () => {
@@ -436,6 +623,35 @@ describe("editor components", () => {
 		});
 	});
 
+	it("applies a texture overlay to an image node", async () => {
+		renderEditorParts();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add image to Untitled Card" }),
+		);
+		const card = useEditorStore.getState().cards[0];
+		const node = card?.nodes[0];
+		if (!card || !node || node.type !== "image")
+			throw new Error("Expected an image node");
+
+		act(() => {
+			useEditorStore.getState().updateNode(card.id, node.id, {
+				src: "https://example.com/texture.jpg",
+				texture: {
+					type: "texture",
+					texture: "paper",
+					opacity: 0.4,
+					settings: DEFAULT_PAPER_SETTINGS,
+				},
+			});
+		});
+
+		await waitFor(() =>
+			expect(
+				document.querySelector('[data-card-layer="texture"]'),
+			).toBeTruthy(),
+		);
+	});
+
 	it("opens image replacement on double click and shows uploaded state", () => {
 		renderEditorParts();
 		fireEvent.click(
@@ -467,9 +683,13 @@ describe("editor components", () => {
 			screen.getByRole("button", { name: "Add text to Untitled Card" }),
 		);
 
-		fireEvent.click(
-			screen.getByRole("button", { name: "Delete text node from card" }),
-		);
+		const deleteButton = screen.getByRole("button", {
+			name: "Delete text node from card",
+		});
+		expect(deleteButton.className).toContain("top-1");
+		expect(deleteButton.className).toContain("right-1");
+		expect(deleteButton.className).not.toContain("translate-x-1/2");
+		fireEvent.click(deleteButton);
 
 		expect(useEditorStore.getState().cards[0]?.nodes).toHaveLength(0);
 		expect(useEditorStore.getState().selectedNodeId).toBeNull();
@@ -507,6 +727,26 @@ describe("editor components", () => {
 		expect(state.selectedNodeId).toBe(state.cards[0]?.nodes[0]?.id);
 	});
 
+	it("resizes a node from its left edge without crossing the card", () => {
+		renderEditorParts();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add image to Untitled Card" }),
+		);
+
+		const handle = screen.getByRole("button", {
+			name: "Resize image node from w",
+		});
+		Object.defineProperty(handle, "setPointerCapture", { value: vi.fn() });
+		fireEvent.pointerDown(handle, { pointerId: 1, clientX: 100, clientY: 100 });
+		fireEvent.pointerMove(handle, { pointerId: 1, clientX: 0, clientY: 100 });
+		fireEvent.pointerUp(handle, { pointerId: 1 });
+
+		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
+			x: 0,
+			width: 244,
+		});
+	});
+
 	it("resizes a text node without changing its font size", () => {
 		renderEditorParts();
 		fireEvent.click(
@@ -526,7 +766,7 @@ describe("editor components", () => {
 		});
 	});
 
-	it("reflows text width and stops eight pixels from the card edge", () => {
+	it("reflows text width all the way to the card edge", () => {
 		renderEditorParts();
 		fireEvent.click(
 			screen.getByRole("button", { name: "Add text to Untitled Card" }),
@@ -548,7 +788,7 @@ describe("editor components", () => {
 		fireEvent.pointerUp(handle, { pointerId: 1 });
 
 		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
-			width: 528,
+			width: 536,
 			height: 58,
 			fontSize: 20,
 		});
@@ -693,6 +933,32 @@ describe("editor components", () => {
 		expect(screen.getByDisplayValue("Untitled Card 2")).toBeTruthy();
 	});
 
+	it("edits the project title and toggles the card drag lock", () => {
+		const onProjectTitleChange = vi.fn();
+		render(
+			<EditorCanvas
+				projectTitle="Brand exploration"
+				onProjectTitleChange={onProjectTitleChange}
+			/>,
+		);
+
+		const title = screen.getByRole("textbox", { name: "Project title" });
+		fireEvent.change(title, { target: { value: "Launch campaign" } });
+		fireEvent.blur(title);
+		expect(onProjectTitleChange).toHaveBeenCalledWith("Launch campaign");
+
+		const lock = screen.getByRole("button", { name: "Lock card dragging" });
+		fireEvent.click(lock);
+		expect(
+			screen
+				.getByRole("button", { name: "Unlock card dragging" })
+				.getAttribute("aria-pressed"),
+		).toBe("true");
+		expect(screen.getByRole("tooltip").textContent).toContain(
+			"prevent dragging between cards",
+		);
+	});
+
 	it("moves between cards with wheel scrolling", () => {
 		renderEditorParts();
 		fireEvent.click(screen.getByRole("button", { name: "Add Card" }));
@@ -787,6 +1053,21 @@ describe("editor components", () => {
 		).toBeTruthy();
 	});
 
+	it("opens the inspector when a node is clicked", () => {
+		render(<EditorPage />);
+		fireEvent.click(
+			screen.getByRole("button", { name: "Add text to Untitled Card" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Close inspector" }));
+
+		fireEvent.click(screen.getByLabelText("Edit text node"));
+
+		expect(
+			screen.getByRole("button", { name: "Close inspector" }),
+		).toBeTruthy();
+		expect(screen.getByLabelText("Text")).toBeTruthy();
+	});
+
 	it("toggles the inspector from the selected card settings button", () => {
 		render(<EditorPage />);
 
@@ -824,7 +1105,9 @@ describe("editor components", () => {
 
 	it("does not offer deletion when only one card remains", () => {
 		renderEditorParts();
-		expect(screen.queryByRole("button", { name: "Delete Untitled Card" })).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: "Delete Untitled Card" }),
+		).toBeNull();
 		expect(useEditorStore.getState().cards).toHaveLength(1);
 	});
 });

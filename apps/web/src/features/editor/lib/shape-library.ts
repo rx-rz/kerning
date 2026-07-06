@@ -96,13 +96,13 @@ export type ShapeLibraryItem = {
 };
 
 export const ICON_COMPONENTS: Record<string, LucideIcon> = {
-	"accessibility": Accessibility,
-	"ampersand": Ampersand,
-	"anchor": Anchor,
-	"angry": Angry,
-	"aperture": Aperture,
-	"apple": Apple,
-	"armchair": Armchair,
+	accessibility: Accessibility,
+	ampersand: Ampersand,
+	anchor: Anchor,
+	angry: Angry,
+	aperture: Aperture,
+	apple: Apple,
+	armchair: Armchair,
 	"arrow-down": ArrowDown,
 	"arrow-down-left": ArrowDownLeft,
 	"arrow-down-right": ArrowDownRight,
@@ -111,135 +111,225 @@ export const ICON_COMPONENTS: Record<string, LucideIcon> = {
 	"arrow-up": ArrowUp,
 	"arrow-up-left": ArrowUpLeft,
 	"arrow-up-right": ArrowUpRight,
-	"asterisk": Asterisk,
+	asterisk: Asterisk,
 	"at-sign": AtSign,
-	"atom": Atom,
+	atom: Atom,
 	"audio-waveform": AudioWaveform,
-	"baby": Baby,
-	"balloon": Balloon,
-	"bell": Bell,
-	"bike": Bike,
-	"bird": Bird,
-	"bluetooth": Bluetooth,
-	"bomb": Bomb,
-	"bot": Bot,
-	"box": Box,
-	"boxes": Boxes,
-	"camera": Camera,
+	baby: Baby,
+	balloon: Balloon,
+	bell: Bell,
+	bike: Bike,
+	bird: Bird,
+	bluetooth: Bluetooth,
+	bomb: Bomb,
+	bot: Bot,
+	box: Box,
+	boxes: Boxes,
+	camera: Camera,
 	"chevron-down": ChevronDown,
 	"chevron-left": ChevronLeft,
 	"chevron-right": ChevronRight,
 	"chevron-up": ChevronUp,
-	"circle": Circle,
-	"cloud": Cloud,
+	circle: Circle,
+	cloud: Cloud,
 	"code-2": Code2,
-	"copyright": Copyright,
-	"cpu": Cpu,
-	"database": Database,
-	"diamond": Diamond,
+	copyright: Copyright,
+	cpu: Cpu,
+	database: Database,
+	diamond: Diamond,
 	"disc-3": Disc3,
-	"equal": Equal,
-	"eye": Eye,
-	"film": Film,
-	"flame": Flame,
+	equal: Equal,
+	eye: Eye,
+	film: Film,
+	flame: Flame,
 	"flower-2": Flower2,
-	"frown": Frown,
-	"hand": Hand,
-	"hash": Hash,
-	"headphones": Headphones,
-	"heart": Heart,
-	"hexagon": Hexagon,
-	"infinity": Infinity,
-	"laptop": Laptop,
-	"laugh": Laugh,
-	"leaf": Leaf,
-	"mic": Mic,
-	"monitor": Monitor,
-	"moon": Moon,
-	"mountain": Mountain,
-	"move": Move,
-	"music": Music,
-	"octagon": Octagon,
-	"orbit": Orbit,
-	"pentagon": Pentagon,
-	"percent": Percent,
-	"radio": Radio,
+	frown: Frown,
+	hand: Hand,
+	hash: Hash,
+	headphones: Headphones,
+	heart: Heart,
+	hexagon: Hexagon,
+	infinity: Infinity,
+	laptop: Laptop,
+	laugh: Laugh,
+	leaf: Leaf,
+	mic: Mic,
+	monitor: Monitor,
+	moon: Moon,
+	mountain: Mountain,
+	move: Move,
+	music: Music,
+	octagon: Octagon,
+	orbit: Orbit,
+	pentagon: Pentagon,
+	percent: Percent,
+	radio: Radio,
 	"refresh-cw": RefreshCw,
-	"sigma": Sigma,
-	"smile": Smile,
-	"smartphone": Smartphone,
-	"sparkles": Sparkles,
-	"speaker": Speaker,
-	"square": Square,
-	"star": Star,
-	"sun": Sun,
-	"terminal": Terminal,
+	sigma: Sigma,
+	smile: Smile,
+	smartphone: Smartphone,
+	sparkles: Sparkles,
+	speaker: Speaker,
+	square: Square,
+	star: Star,
+	sun: Sun,
+	terminal: Terminal,
 	"tree-pine": TreePine,
-	"triangle": Triangle,
-	"user": User,
-	"users": Users,
-	"video": Video,
-	"waves": Waves,
-	"wifi": Wifi,
+	triangle: Triangle,
+	user: User,
+	users: Users,
+	video: Video,
+	waves: Waves,
+	wifi: Wifi,
 };
 
 const PRIMITIVES: ShapeLibraryItem[] = [
-	{ id: "line-horizontal", label: "Horizontal line", category: "Lines", type: "line", value: "horizontal" },
-	{ id: "line-vertical", label: "Vertical line", category: "Lines", type: "line", value: "vertical" },
-	{ id: "line-diagonal-up", label: "Diagonal up", category: "Lines", type: "line", value: "diagonal-up" },
-	{ id: "line-diagonal-down", label: "Diagonal down", category: "Lines", type: "line", value: "diagonal-down" },
-	{ id: "rectangle", label: "Rectangle", category: "Geometry", type: "rectangle", value: "rectangle" },
-	{ id: "square", label: "Square", category: "Geometry", type: "rectangle", value: "square" },
-	{ id: "ellipse", label: "Ellipse", category: "Geometry", type: "ellipse", value: "ellipse" },
-	{ id: "circle", label: "Circle", category: "Geometry", type: "ellipse", value: "circle" },
-	...Array.from({ length: 12 }, (_, index): ShapeLibraryItem => ({
-		id: `line-${index + 1}`,
-		label: `Rule ${index + 1}`,
+	{
+		id: "line-horizontal",
+		label: "Horizontal line",
 		category: "Lines",
 		type: "line",
-		value: ["horizontal", "vertical", "diagonal-up", "diagonal-down"][index % 4] ?? "horizontal",
-	})),
+		value: "horizontal",
+	},
+	{
+		id: "line-vertical",
+		label: "Vertical line",
+		category: "Lines",
+		type: "line",
+		value: "vertical",
+	},
+	{
+		id: "line-diagonal-up",
+		label: "Diagonal up",
+		category: "Lines",
+		type: "line",
+		value: "diagonal-up",
+	},
+	{
+		id: "line-diagonal-down",
+		label: "Diagonal down",
+		category: "Lines",
+		type: "line",
+		value: "diagonal-down",
+	},
+	{
+		id: "rectangle",
+		label: "Rectangle",
+		category: "Geometry",
+		type: "rectangle",
+		value: "rectangle",
+	},
+	{
+		id: "square",
+		label: "Square",
+		category: "Geometry",
+		type: "rectangle",
+		value: "square",
+	},
+	{
+		id: "ellipse",
+		label: "Ellipse",
+		category: "Geometry",
+		type: "ellipse",
+		value: "ellipse",
+	},
+	{
+		id: "circle",
+		label: "Circle",
+		category: "Geometry",
+		type: "ellipse",
+		value: "circle",
+	},
+	...Array.from(
+		{ length: 12 },
+		(_, index): ShapeLibraryItem => ({
+			id: `line-${index + 1}`,
+			label: `Rule ${index + 1}`,
+			category: "Lines",
+			type: "line",
+			value:
+				["horizontal", "vertical", "diagonal-up", "diagonal-down"][index % 4] ??
+				"horizontal",
+		}),
+	),
 ];
 
 function titleCase(value: string) {
-	return value.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+	return value
+		.replaceAll("-", " ")
+		.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function categorizeIcon(name: string) {
 	if (/arrow|chevron|move|refresh/.test(name)) return "Arrows";
-	if (/heart|star|spark|sun|moon|cloud|flower|leaf|tree|mountain|waves|flame/.test(name)) return "Nature";
-	if (/music|audio|disc|radio|film|camera|video|mic|headphone|speaker/.test(name)) return "Media";
-	if (/user|baby|smile|frown|angry|laugh|hand|accessibility/.test(name)) return "People";
-	if (/laptop|monitor|smartphone|cpu|wifi|bluetooth|database|code|terminal|bot/.test(name)) return "Tech";
-	if (/circle|square|triangle|diamond|hexagon|octagon|pentagon|box|orbit/.test(name)) return "Geometry";
-	if (/asterisk|ampersand|at-sign|infinity|copyright|sigma|hash|equal|percent/.test(name)) return "Symbols";
+	if (
+		/heart|star|spark|sun|moon|cloud|flower|leaf|tree|mountain|waves|flame/.test(
+			name,
+		)
+	)
+		return "Nature";
+	if (
+		/music|audio|disc|radio|film|camera|video|mic|headphone|speaker/.test(name)
+	)
+		return "Media";
+	if (/user|baby|smile|frown|angry|laugh|hand|accessibility/.test(name))
+		return "People";
+	if (
+		/laptop|monitor|smartphone|cpu|wifi|bluetooth|database|code|terminal|bot/.test(
+			name,
+		)
+	)
+		return "Tech";
+	if (
+		/circle|square|triangle|diamond|hexagon|octagon|pentagon|box|orbit/.test(
+			name,
+		)
+	)
+		return "Geometry";
+	if (
+		/asterisk|ampersand|at-sign|infinity|copyright|sigma|hash|equal|percent/.test(
+			name,
+		)
+	)
+		return "Symbols";
 	return "Objects";
 }
 
 const lucideShapes = Object.keys(ICON_COMPONENTS)
 	.slice(0, 80)
-	.map((name): ShapeLibraryItem => ({
-		id: `icon-${name}`,
-		label: titleCase(name),
-		category: categorizeIcon(name),
-		type: "icon",
-		value: name,
-	}));
+	.map(
+		(name): ShapeLibraryItem => ({
+			id: `icon-${name}`,
+			label: titleCase(name),
+			category: categorizeIcon(name),
+			type: "icon",
+			value: name,
+		}),
+	);
 
 const unicodeShapes = [
-	...Array.from({ length: 80 }, (_, index) => String.fromCodePoint(0x2600 + index)),
-	...Array.from({ length: 20 }, (_, index) => String.fromCodePoint(0x25a0 + index)),
-].map((symbol, index): ShapeLibraryItem => ({
-	id: `symbol-${index}`,
-	label: `Symbol U+${symbol.codePointAt(0)?.toString(16).toUpperCase()}`,
-	category: index < 80 ? "Emoji" : "Symbols",
-	type: "emoji",
-	value: symbol,
-}));
+	...Array.from({ length: 80 }, (_, index) =>
+		String.fromCodePoint(0x2600 + index),
+	),
+	...Array.from({ length: 20 }, (_, index) =>
+		String.fromCodePoint(0x25a0 + index),
+	),
+].map(
+	(symbol, index): ShapeLibraryItem => ({
+		id: `symbol-${index}`,
+		label: `Symbol U+${symbol.codePointAt(0)?.toString(16).toUpperCase()}`,
+		category: index < 80 ? "Emoji" : "Symbols",
+		type: "emoji",
+		value: symbol,
+	}),
+);
 
-export const SHAPE_LIBRARY = [...PRIMITIVES, ...unicodeShapes, ...lucideShapes].slice(0, 200);
+export const SHAPE_LIBRARY = [
+	...PRIMITIVES,
+	...unicodeShapes,
+	...lucideShapes,
+].slice(0, 200);
 
-export const SHAPE_CATEGORIES = [
-	"All",
-	...Array.from(new Set(SHAPE_LIBRARY.map(({ category }) => category))),
-];
+export const SHAPE_CATEGORIES = Array.from(
+	new Set(SHAPE_LIBRARY.map(({ category }) => category)),
+);

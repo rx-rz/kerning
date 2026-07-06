@@ -44,6 +44,7 @@ export type RadialGradientCardFill = {
 export type ImageCardFill = {
 	type: "image";
 	imageId: string | null;
+	src?: string;
 	opacity: number;
 	settings: ImageFillSettings;
 };
@@ -156,6 +157,15 @@ export type ImageNode = BaseNode & {
 	positionY: number;
 	effects: ImageEffects;
 	opacity: number;
+	blendMode?:
+		| "normal"
+		| "multiply"
+		| "screen"
+		| "overlay"
+		| "difference"
+		| "lighten"
+		| "darken";
+	texture?: TextureCardFill | null;
 };
 
 export type ImageEffects = {
@@ -172,6 +182,7 @@ export type ShapeNode = BaseNode & {
 	shapeType: "icon" | "emoji" | "line" | "rectangle" | "ellipse";
 	shape: string;
 	color: string;
+	texture?: TextureCardFill | null;
 };
 
 export type EditorNode = TextNode | ImageNode | ShapeNode;

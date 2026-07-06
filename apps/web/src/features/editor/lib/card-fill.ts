@@ -86,6 +86,7 @@ export function createDefaultFill(type: CardFill["type"]): CardFill {
 			return {
 				type,
 				imageId: null,
+				src: "",
 				opacity: 0.35,
 				settings: { ...DEFAULT_IMAGE_SETTINGS },
 			};

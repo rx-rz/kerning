@@ -1,16 +1,15 @@
 import {
-	GripVertical,
 	ImagePlus,
-	LayoutTemplate,
 	Layers3,
 	Settings2,
+	SwatchBook,
 	Trash2,
 	Type,
-	SwatchBook,
 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { CardImageFill } from "#/features/editor/components/card-image-fill";
 import { EditorNode } from "#/features/editor/components/editor-node";
+import { LayerList } from "#/features/editor/components/layer-list";
 import { ShapePicker } from "#/features/editor/components/shape-picker";
 import { getCardFillStyle } from "#/features/editor/lib/card-fill";
 import { useEditorStore } from "#/features/editor/store/editor-store";
@@ -29,6 +28,7 @@ type EditorCardProps = {
 	isSelected: boolean;
 	onSelect: (id: string) => void;
 	onToggleSettings?: () => void;
+	onSelectNode?: () => void;
 	onOpenTemplates?: (cardId: string) => void;
 	onDelete: (id: string) => void;
 };
@@ -39,6 +39,7 @@ export function EditorCard({
 	isSelected,
 	onSelect,
 	onToggleSettings,
+	onSelectNode,
 	onOpenTemplates,
 	onDelete,
 }: EditorCardProps) {
@@ -47,8 +48,11 @@ export function EditorCard({
 	const addTextNode = useEditorStore((state) => state.addTextNode);
 	const addImageNode = useEditorStore((state) => state.addImageNode);
 	const selectNode = useEditorStore((state) => state.selectNode);
-	const reorderNode = useEditorStore((state) => state.reorderNode);
 	const [layersOpen, setLayersOpen] = useState(false);
+	const handleSelectNode = (nodeId: string) => {
+		selectNode(card.id, nodeId);
+		onSelectNode?.();
+	};
 
 	return (
 		<div
@@ -101,10 +105,12 @@ export function EditorCard({
 						key={node.id}
 						cardId={card.id}
 						cardWidth={card.width}
+						cardHeight={card.height}
 						zoom={zoom}
 						node={node}
 						isSelected={node.id === selectedNodeId}
 						layerIndex={index}
+						onSelect={handleSelectNode}
 					/>
 				))}
 			</div>
@@ -145,7 +151,7 @@ export function EditorCard({
 							onOpenTemplates?.(card.id);
 						}}
 					>
-						<SwatchBook className="size-3" /> 
+						<SwatchBook className="size-3" />
 					</button>
 					<button
 						type="button"
@@ -188,53 +194,11 @@ export function EditorCard({
 				</button>
 			) : null}
 			{isSelected && layersOpen ? (
-				<div
-					className="absolute top-full left-10 z-40 mt-2 flex max-w-[calc(100%-3rem)] items-center gap-1 overflow-x-auto rounded-xl border border-white/70 bg-white/85 p-1.5 shadow-[0_12px_35px_rgba(15,23,42,.14)] backdrop-blur-xl"
-					onClick={(event) => event.stopPropagation()}
-				>
-					<span className="px-1.5 font-mono text-[9px] font-semibold tracking-wider text-muted-foreground">
-						Layers
-					</span>
-					{[...card.nodes].reverse().map((node, visualIndex) => {
-						const index = card.nodes.length - 1 - visualIndex;
-						const label =
-							node.type === "text"
-								? node.text.trim().slice(0, 14) || "Text"
-								: node.type === "image"
-									? node.alt.trim().slice(0, 14) || "Image"
-									: node.shape.replaceAll("-", " ").slice(0, 14) || "Shape";
-						return (
-							<button
-								key={node.id}
-								type="button"
-								draggable
-								aria-pressed={node.id === selectedNodeId}
-								className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-hairline bg-white/70 px-2 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-muted aria-pressed:bg-foreground aria-pressed:text-background"
-								onClick={() => selectNode(card.id, node.id)}
-								onDragStart={(event) =>
-									event.dataTransfer.setData("text/plain", node.id)
-								}
-								onDragOver={(event) => event.preventDefault()}
-								onDrop={(event) => {
-									event.preventDefault();
-									const sourceId = event.dataTransfer.getData("text/plain");
-									if (sourceId) reorderNode(card.id, sourceId, index);
-								}}
-							>
-								<GripVertical className="size-3 opacity-50" />
-								{label}
-								<span className="font-mono text-[8px] opacity-50">
-									{(index + 1) * 5}
-								</span>
-							</button>
-						);
-					})}
-					{card.nodes.length === 0 ? (
-						<span className="px-2 text-[10px] text-muted-foreground">
-							No nodes yet
-						</span>
-					) : null}
-				</div>
+				<LayerList
+					card={card}
+					selectedNodeId={selectedNodeId}
+					onSelectNode={handleSelectNode}
+				/>
 			) : null}
 		</div>
 	);

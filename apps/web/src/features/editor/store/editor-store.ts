@@ -48,7 +48,7 @@ type EditorState = {
 };
 
 export const EDITOR_SESSION_STORAGE_KEY = "kerning-editor-session";
-export const NODE_CARD_INSET = 3;
+export const NODE_CARD_INSET = 0;
 
 const fallbackStorage: Storage = {
 	length: 0,
@@ -139,6 +139,8 @@ function createDefaultImageNode(card: EditorCard): ImageNode {
 			sepia: 0,
 		},
 		opacity: 1,
+		blendMode: "normal",
+		texture: null,
 	};
 }
 
@@ -146,7 +148,10 @@ function createDefaultShapeNode(
 	card: EditorCard,
 	shape: Pick<ShapeNode, "shapeType" | "shape">,
 ): ShapeNode {
-	const size = Math.min(120, Math.max(24, Math.min(card.width, card.height) / 3));
+	const size = Math.min(
+		120,
+		Math.max(24, Math.min(card.width, card.height) / 3),
+	);
 
 	return {
 		id: createId(),
@@ -158,6 +163,7 @@ function createDefaultShapeNode(
 		shapeType: shape.shapeType,
 		shape: shape.shape,
 		color: "#111111",
+		texture: null,
 	};
 }
 
@@ -169,12 +175,15 @@ function constrainNode(
 	node: EditorNode,
 	card: Pick<EditorCard, "width" | "height">,
 ): EditorNode {
-	const rightInset = node.type === "text" ? 8 : NODE_CARD_INSET;
-	const availableWidth = Math.max(1, card.width - NODE_CARD_INSET - rightInset);
+	const availableWidth = Math.max(1, card.width - NODE_CARD_INSET * 2);
 	const availableHeight = Math.max(1, card.height - NODE_CARD_INSET * 2);
 	const width = clamp(node.width, 1, availableWidth);
 	const height = clamp(node.height, 1, availableHeight);
-	const x = clamp(node.x, NODE_CARD_INSET, card.width - rightInset - width);
+	const x = clamp(
+		node.x,
+		NODE_CARD_INSET,
+		card.width - NODE_CARD_INSET - width,
+	);
 	const y = clamp(
 		node.y,
 		NODE_CARD_INSET,
@@ -203,11 +212,12 @@ function normalizeCard(card: EditorCard): EditorCard {
 		...clampedCard,
 		nodes: clampedCard.nodes.map((node) =>
 			constrainNode(
-			node.type === "image"
+				node.type === "image"
 					? {
 							...node,
 							imageId: node.imageId ?? null,
 							zoom: node.zoom ?? 1,
+							blendMode: node.blendMode ?? "normal",
 							positionX: node.positionX ?? 50,
 							positionY: node.positionY ?? 50,
 							effects: {
@@ -221,16 +231,17 @@ function normalizeCard(card: EditorCard): EditorCard {
 						}
 					: node.type === "text"
 						? {
-							...node,
-							letterSpacing: node.letterSpacing ?? 0,
-							textAlign: node.textAlign ?? "left",
-							textCasing: node.textCasing ?? "none",
+								...node,
+								letterSpacing: node.letterSpacing ?? 0,
+								textAlign: node.textAlign ?? "left",
+								textCasing: node.textCasing ?? "none",
 							}
 						: {
 								...node,
 								shapeType: node.shapeType ?? "icon",
 								shape: node.shape ?? "circle",
 								color: node.color ?? "#111111",
+								texture: node.texture ?? null,
 							},
 				clampedCard,
 			),
@@ -269,15 +280,20 @@ function migrateTexture(
 
 function migrateImageFill(fill: {
 	imageId?: string | null;
+	src?: string;
 	opacity?: number;
 }): ImageCardFill {
 	const defaultFill = createDefaultFill("image") as ImageCardFill;
-
-	return {
+	const migratedFill: ImageCardFill = {
 		...defaultFill,
 		imageId: fill.imageId ?? null,
 		opacity: fill.opacity ?? defaultFill.opacity,
 	};
+
+	if (fill.src === undefined) delete migratedFill.src;
+	else migratedFill.src = fill.src;
+
+	return migratedFill;
 }
 
 function migrateCardAppearance(card: LegacyEditorCard): EditorCard {

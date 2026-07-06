@@ -2,9 +2,13 @@ import useEmblaCarousel from "embla-carousel-react";
 import {
 	ChevronLeft,
 	ChevronRight,
+	Info,
+	Lock,
+	LockOpen,
 	Plus,
 	RectangleHorizontal,
 	RotateCcw,
+	ScanText,
 	ZoomIn,
 	ZoomOut,
 } from "lucide-react";
@@ -16,16 +20,30 @@ import { EditorCard } from "#/features/editor/components/editor-card";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 
 type EditorCanvasProps = {
+	projectTitle?: string;
+	onProjectTitleChange?: (title: string) => void;
 	onToggleInspector?: () => void;
+	onSelectNode?: () => void;
 	onOpenTemplates?: (cardId: string) => void;
+	onOpenGlyphViewer?: () => void;
 };
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 1.5;
 const ZOOM_STEP = 0.1;
 
-export function EditorCanvas({ onToggleInspector, onOpenTemplates }: EditorCanvasProps) {
+export function EditorCanvas({
+	projectTitle = "Untitled Project",
+	onProjectTitleChange,
+	onToggleInspector,
+	onSelectNode,
+	onOpenTemplates,
+	onOpenGlyphViewer,
+}: EditorCanvasProps) {
 	const [zoom, setZoom] = useState(1);
+	const [isCardDragLocked, setIsCardDragLocked] = useState(false);
+	const [title, setTitle] = useState(projectTitle);
+	const cancelTitleCommit = useRef(false);
 	const cards = useEditorStore((state) => state.cards);
 	const selectedCardId = useEditorStore((state) => state.selectedCardId);
 	const selectCard = useEditorStore((state) => state.selectCard);
@@ -37,16 +55,32 @@ export function EditorCanvas({ onToggleInspector, onOpenTemplates }: EditorCanva
 		containScroll: false,
 		duration: 32,
 		skipSnaps: false,
-		watchDrag: (_emblaApi, event) => {
-			const target = event.target as HTMLElement | null;
-			return !target?.closest?.("[data-editor-node]");
-		},
+		watchDrag: isCardDragLocked
+			? false
+			: (_emblaApi, event) => {
+					const target = event.target as HTMLElement | null;
+					return !target?.closest?.("[data-editor-node]");
+				},
 	});
 	const lastWheelNavigationAt = useRef(0);
 	const selectedIndex = cards.findIndex((card) => card.id === selectedCardId);
 	const hasPreviousCard = selectedIndex > 0;
 	const hasNextCard = selectedIndex >= 0 && selectedIndex < cards.length - 1;
 	const zoomPercentage = Math.round(zoom * 100);
+
+	useEffect(() => {
+		setTitle(projectTitle);
+	}, [projectTitle]);
+
+	function commitProjectTitle() {
+		if (cancelTitleCommit.current) {
+			cancelTitleCommit.current = false;
+			return;
+		}
+		const nextTitle = title.trim() || projectTitle;
+		setTitle(nextTitle);
+		if (nextTitle !== projectTitle) onProjectTitleChange?.(nextTitle);
+	}
 
 	const syncSelectionFromCarousel = useCallback(() => {
 		if (!emblaApi) {
@@ -152,6 +186,69 @@ export function EditorCanvas({ onToggleInspector, onOpenTemplates }: EditorCanva
 			}}
 			tabIndex={-1}
 		>
+			<Button
+				type="button"
+				aria-label="Open glyph viewer"
+				variant="ghost"
+				size="icon"
+				className="absolute top-3 left-3 z-30 border border-white/60 bg-surface-glass shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-3xl"
+				onClick={onOpenGlyphViewer}
+			>
+				<ScanText />
+			</Button>
+			<div
+				aria-label="Project controls"
+				className="absolute top-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-white/60 bg-surface-glass p-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-3xl"
+				onPointerDown={(event) => event.stopPropagation()}
+				role="toolbar"
+			>
+				<input
+					aria-label="Project title"
+					className="w-40 rounded-md bg-transparent px-2 py-1 text-sm font-medium outline-none transition-colors hover:bg-muted/70 focus:bg-muted focus:ring-1 focus:ring-ring"
+					value={title}
+					onBlur={commitProjectTitle}
+					onChange={(event) => setTitle(event.target.value)}
+					onKeyDown={(event) => {
+						if (event.key === "Enter") event.currentTarget.blur();
+						if (event.key === "Escape") {
+							cancelTitleCommit.current = true;
+							setTitle(projectTitle);
+							event.currentTarget.blur();
+						}
+					}}
+				/>
+				<div className="h-5 w-px bg-border" />
+				<Button
+					type="button"
+					aria-label={
+						isCardDragLocked ? "Unlock card dragging" : "Lock card dragging"
+					}
+					aria-pressed={isCardDragLocked}
+					variant={isCardDragLocked ? "secondary" : "ghost"}
+					size="icon-sm"
+					onClick={() => setIsCardDragLocked((isLocked) => !isLocked)}
+				>
+					{isCardDragLocked ? <Lock /> : <LockOpen />}
+				</Button>
+				<div className="group relative flex items-center">
+					<button
+						type="button"
+						aria-label="About card drag lock"
+						aria-describedby="card-lock-tooltip"
+						className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						<Info className="size-3.5" />
+					</button>
+					<span
+						id="card-lock-tooltip"
+						role="tooltip"
+						className="pointer-events-none absolute top-full left-1/2 mt-2 w-max max-w-56 -translate-x-1/2 rounded-md bg-foreground px-2.5 py-1.5 text-center text-xs text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+					>
+						Lock to prevent dragging between cards while you edit.
+					</span>
+				</div>
+			</div>
+
 			{cards.length ? (
 				<section
 					ref={emblaRef}
@@ -168,6 +265,7 @@ export function EditorCanvas({ onToggleInspector, onOpenTemplates }: EditorCanva
 									isSelected={card.id === selectedCardId}
 									onSelect={selectCard}
 									onToggleSettings={onToggleInspector}
+									onSelectNode={onSelectNode}
 									onOpenTemplates={onOpenTemplates}
 									onDelete={deleteCard}
 								/>
@@ -204,7 +302,7 @@ export function EditorCanvas({ onToggleInspector, onOpenTemplates }: EditorCanva
 			{cards.length ? (
 				<div
 					aria-label="Card navigation"
-					className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-white/80 bg-white/80 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-xl"
+					className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-white/60 bg-surface-glass p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-3xl"
 					onClick={(event) => event.stopPropagation()}
 					onKeyDown={(event) => event.stopPropagation()}
 					role="toolbar"

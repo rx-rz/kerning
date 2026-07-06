@@ -13,26 +13,30 @@ import { cn } from "#/lib/utils";
 type EditorNodeProps = {
 	cardId: string;
 	cardWidth: number;
+	cardHeight: number;
 	zoom: number;
 	node: EditorNodeData;
 	isSelected: boolean;
 	layerIndex: number;
+	onSelect: (nodeId: string) => void;
 };
 
 export function EditorNode({
 	cardId,
 	cardWidth,
+	cardHeight,
 	zoom,
 	node,
 	isSelected,
 	layerIndex,
+	onSelect,
 }: EditorNodeProps) {
-	const selectNode = useEditorStore((state) => state.selectNode);
 	const nodeRef = useRef<HTMLDivElement>(null);
+	const selectNode = () => onSelect(node.id);
 
 	function startDragging(event: PointerEvent<HTMLElement>) {
 		event.stopPropagation();
-		selectNode(cardId, node.id);
+		selectNode();
 
 		const origin = {
 			pointerX: event.clientX,
@@ -44,7 +48,8 @@ export function EditorNode({
 		target.setPointerCapture(event.pointerId);
 
 		function moveNode(moveEvent: globalThis.PointerEvent) {
-			const round = node.type === "image" ? Math.ceil : (value: number) => value;
+			const round =
+				node.type === "image" ? Math.ceil : (value: number) => value;
 			useEditorStore.getState().updateNode(cardId, node.id, {
 				x: round(origin.x + (moveEvent.clientX - origin.pointerX) / zoom),
 				y: round(origin.y + (moveEvent.clientY - origin.pointerY) / zoom),
@@ -62,10 +67,15 @@ export function EditorNode({
 		target.addEventListener("pointercancel", stopDragging);
 	}
 
-	function startResizing(event: PointerEvent<HTMLButtonElement>) {
+	type ResizeDirection = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
+
+	function startResizing(
+		event: PointerEvent<HTMLButtonElement>,
+		direction: ResizeDirection,
+	) {
 		event.preventDefault();
 		event.stopPropagation();
-		selectNode(cardId, node.id);
+		selectNode();
 
 		const measuredWidth = nodeRef.current?.getBoundingClientRect().width;
 		const origin = {
@@ -74,6 +84,8 @@ export function EditorNode({
 			width:
 				measuredWidth && measuredWidth > 0 ? measuredWidth / zoom : node.width,
 			height: node.height,
+			x: node.x,
+			y: node.y,
 		};
 		const target = event.currentTarget;
 		target.setPointerCapture(event.pointerId);
@@ -81,11 +93,35 @@ export function EditorNode({
 		function resizeNode(moveEvent: globalThis.PointerEvent) {
 			const deltaX = (moveEvent.clientX - origin.pointerX) / zoom;
 			const deltaY = (moveEvent.clientY - origin.pointerY) / zoom;
-			const round = node.type === "image" ? Math.ceil : (value: number) => value;
+			const round =
+				node.type === "image" ? Math.ceil : (value: number) => value;
+
+			const movesLeft = direction.includes("w");
+			const movesRight = direction.includes("e");
+			const movesTop = direction.includes("n");
+			const movesBottom = direction.includes("s");
+			const width = movesLeft
+				? Math.min(origin.x + origin.width, Math.max(24, origin.width - deltaX))
+				: movesRight
+					? Math.min(cardWidth - origin.x, Math.max(24, origin.width + deltaX))
+					: origin.width;
+			const height = movesTop
+				? Math.min(
+						origin.y + origin.height,
+						Math.max(24, origin.height - deltaY),
+					)
+				: movesBottom
+					? Math.min(
+							cardHeight - origin.y,
+							Math.max(24, origin.height + deltaY),
+						)
+					: origin.height;
 
 			useEditorStore.getState().updateNode(cardId, node.id, {
-				width: round(Math.max(24, origin.width + deltaX)),
-				height: round(Math.max(24, origin.height + deltaY)),
+				width: round(width),
+				height: round(height),
+				x: movesLeft ? round(origin.x + origin.width - width) : origin.x,
+				y: movesTop ? round(origin.y + origin.height - height) : origin.y,
 			});
 		}
 
@@ -103,7 +139,7 @@ export function EditorNode({
 	function startWidthResizing(event: PointerEvent<HTMLButtonElement>) {
 		event.preventDefault();
 		event.stopPropagation();
-		selectNode(cardId, node.id);
+		selectNode();
 
 		const origin = {
 			pointerX: event.clientX,
@@ -113,7 +149,7 @@ export function EditorNode({
 		target.setPointerCapture(event.pointerId);
 
 		function resizeWidth(moveEvent: globalThis.PointerEvent) {
-			const maximumWidth = cardWidth - node.x - 8;
+			const maximumWidth = cardWidth - node.x;
 			useEditorStore.getState().updateNode(cardId, node.id, {
 				width: Math.min(
 					maximumWidth,
@@ -168,7 +204,7 @@ export function EditorNode({
 					cardId={cardId}
 					node={node}
 					isSelected={isSelected}
-					onSelect={() => selectNode(cardId, node.id)}
+					onSelect={selectNode}
 					onStartDragging={startDragging}
 				/>
 			) : node.type === "image" ? (
@@ -176,14 +212,14 @@ export function EditorNode({
 					cardId={cardId}
 					node={node}
 					isSelected={isSelected}
-					onSelect={() => selectNode(cardId, node.id)}
+					onSelect={selectNode}
 					onStartDragging={startDragging}
 				/>
 			) : (
 				<ShapeNode
 					node={node}
 					isSelected={isSelected}
-					onSelect={() => selectNode(cardId, node.id)}
+					onSelect={selectNode}
 					onStartDragging={startDragging}
 				/>
 			)}
@@ -192,7 +228,7 @@ export function EditorNode({
 					<button
 						type="button"
 						aria-label={`Delete ${node.type} node from card`}
-						className="absolute top-0 right-0 z-30 flex size-4 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full bg-foreground/80 p-0 text-background shadow-sm outline-none transition-colors hover:bg-destructive focus-visible:ring-1 focus-visible:ring-foreground/30"
+						className="absolute top-1 right-1 z-30 flex size-4 items-center justify-center rounded-full bg-foreground/80 p-0 text-background shadow-sm outline-none transition-colors hover:bg-destructive focus-visible:ring-1 focus-visible:ring-foreground/30"
 						onClick={deleteNode}
 						onPointerDown={(event) => event.stopPropagation()}
 					>
@@ -208,14 +244,59 @@ export function EditorNode({
 							onPointerDown={startWidthResizing}
 						/>
 					) : null}
-					<button
-						type="button"
-						data-editor-node-resize-handle
-						aria-label={`Resize ${node.type} node`}
-						className="absolute right-0 bottom-0 z-30 size-2.5 translate-x-1/2 translate-y-1/2 cursor-nwse-resize touch-none rounded-[2px] bg-foreground/75 p-0 shadow-sm outline-none"
-						onClick={(event) => event.stopPropagation()}
-						onPointerDown={startResizing}
-					/>
+					{(
+						[
+							[
+								"n",
+								"top-0 left-1/2 h-1.5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-ns-resize",
+							],
+							[
+								"ne",
+								"top-0 right-0 size-2.5 translate-x-1/2 -translate-y-1/2 cursor-nesw-resize",
+							],
+							[
+								"e",
+								"top-1/2 right-0 h-5 w-1.5 translate-x-1/2 -translate-y-1/2 cursor-ew-resize",
+							],
+							[
+								"se",
+								"right-0 bottom-0 size-2.5 translate-x-1/2 translate-y-1/2 cursor-nwse-resize",
+							],
+							[
+								"s",
+								"bottom-0 left-1/2 h-1.5 w-5 -translate-x-1/2 translate-y-1/2 cursor-ns-resize",
+							],
+							[
+								"sw",
+								"bottom-0 left-0 size-2.5 -translate-x-1/2 translate-y-1/2 cursor-nesw-resize",
+							],
+							[
+								"w",
+								"top-1/2 left-0 h-5 w-1.5 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize",
+							],
+							[
+								"nw",
+								"top-0 left-0 size-2.5 -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize",
+							],
+						] as const
+					).map(([direction, position]) => (
+						<button
+							key={direction}
+							type="button"
+							data-editor-node-resize-handle={direction}
+							aria-label={
+								direction === "se"
+									? `Resize ${node.type} node`
+									: `Resize ${node.type} node from ${direction}`
+							}
+							className={cn(
+								"absolute z-30 touch-none rounded-[2px] bg-foreground/75 p-0 shadow-sm outline-none",
+								position,
+							)}
+							onClick={(event) => event.stopPropagation()}
+							onPointerDown={(event) => startResizing(event, direction)}
+						/>
+					))}
 				</>
 			) : null}
 		</div>

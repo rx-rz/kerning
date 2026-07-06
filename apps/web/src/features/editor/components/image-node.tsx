@@ -1,11 +1,17 @@
 import { ImageIcon } from "lucide-react";
 import type { PointerEvent } from "react";
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 
 import { replaceEditorImage } from "#/db/image-db";
 import { useStoredImageUrl } from "#/features/editor/hooks/use-stored-image-url";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 import type { ImageNode as ImageNodeData } from "#/features/editor/types";
+
+const CardTextureFill = lazy(() =>
+	import("#/features/editor/components/card-texture-fill").then((module) => ({
+		default: module.CardTextureFill,
+	})),
+);
 
 type ImageNodeProps = {
 	cardId: string;
@@ -68,20 +74,28 @@ export function ImageNode({
 				}}
 			>
 				{imageUrl ? (
-					<img
-						className="pointer-events-none size-full"
-						src={imageUrl}
-						alt={node.alt}
-						style={{
-							objectFit: node.objectFit,
-							objectPosition: imagePosition,
-							transform: `scale(${node.zoom})`,
-							transformOrigin: imagePosition,
-							filter: imageFilter,
-							opacity: node.opacity,
-						}}
-						draggable={false}
-					/>
+					<span className="relative block size-full overflow-hidden">
+						<img
+							className="pointer-events-none size-full"
+							src={imageUrl}
+							alt={node.alt}
+							style={{
+								objectFit: node.objectFit,
+								objectPosition: imagePosition,
+								transform: `scale(${node.zoom})`,
+								transformOrigin: imagePosition,
+								filter: imageFilter,
+								opacity: node.opacity,
+								mixBlendMode: node.blendMode ?? "normal",
+							}}
+							draggable={false}
+						/>
+						{node.texture ? (
+							<Suspense fallback={null}>
+								<CardTextureFill fill={node.texture} />
+							</Suspense>
+						) : null}
+					</span>
 				) : (
 					<span className="flex size-full flex-col items-center justify-center gap-2 border border-dashed border-black/20 bg-black/5 text-[10px] font-semibold tracking-wide text-black/45">
 						<ImageIcon className="size-5" />

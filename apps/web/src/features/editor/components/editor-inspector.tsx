@@ -20,7 +20,7 @@ export function EditorInspector({ onClose }: EditorInspectorProps) {
 	);
 
 	return (
-		<aside className="fixed top-2 right-2 bottom-2 z-40 flex min-h-0 max-h-dvh w-[min(23rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-2xl border border-hairline bg-white pt-2 shadow-[0_20px_60px_rgba(15,23,42,0.14)]">
+		<aside className="fixed top-2 right-2 bottom-2 z-40 flex min-h-0 max-h-dvh w-[min(23rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-2xl border border-white/60 bg-surface-glass pt-2 shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur-3xl">
 			<Button
 				type="button"
 				aria-label="Close inspector"
@@ -31,7 +31,7 @@ export function EditorInspector({ onClose }: EditorInspectorProps) {
 			>
 				<X />
 			</Button>
-			<div className="flex min-h-0 flex-1 mt-8 flex-col overflow-y-auto ">
+			<div className="mt-8 flex min-h-0 flex-1 flex-col overflow-y-auto">
 				{selectedCard && selectedNode ? (
 					<NodeInspector card={selectedCard} node={selectedNode} />
 				) : selectedCard ? (

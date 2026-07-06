@@ -1,8 +1,15 @@
 import { Circle } from "lucide-react";
 import type { PointerEvent } from "react";
+import { lazy, Suspense } from "react";
 
 import type { ShapeNode as ShapeNodeData } from "#/features/editor/types";
 import { ICON_COMPONENTS } from "#/features/editor/lib/shape-library";
+
+const ShapeTextureFill = lazy(() =>
+	import("#/features/editor/components/shape-texture-fill").then((module) => ({
+		default: module.ShapeTextureFill,
+	})),
+);
 
 export function ShapeNode({
 	node,
@@ -27,7 +34,14 @@ export function ShapeNode({
 			}}
 			onPointerDown={onStartDragging}
 		>
-			<ShapeGraphic node={node} />
+			<span className="relative block size-full">
+				<ShapeGraphic node={node} />
+				{node.texture ? (
+					<Suspense fallback={null}>
+						<ShapeTextureFill node={node} />
+					</Suspense>
+				) : null}
+			</span>
 		</button>
 	);
 }
@@ -53,7 +67,9 @@ export function ShapeGraphic({
 	if (node.shapeType === "emoji") {
 		return (
 			<span
-				className={className ?? "flex size-full items-center justify-center leading-none"}
+				className={
+					className ?? "flex size-full items-center justify-center leading-none"
+				}
 				style={{ color: node.color, fontSize: "min(80cqw, 80cqh)" }}
 			>
 				{node.shape}
@@ -74,12 +90,21 @@ export function ShapeGraphic({
 	}
 
 	const rotation =
-		node.shape === "vertical" ? 90 : node.shape === "diagonal-up" ? -30 : node.shape === "diagonal-down" ? 30 : 0;
+		node.shape === "vertical"
+			? 90
+			: node.shape === "diagonal-up"
+				? -30
+				: node.shape === "diagonal-down"
+					? 30
+					: 0;
 	return (
-		<span className="flex size-full items-center justify-center">
+		<span className={className ?? "flex size-full items-center justify-center"}>
 			<span
 				className="block h-1.5 w-full rounded-full"
-				style={{ backgroundColor: node.color, transform: `rotate(${rotation}deg)` }}
+				style={{
+					backgroundColor: node.color,
+					transform: `rotate(${rotation}deg)`,
+				}}
 			/>
 		</span>
 	);

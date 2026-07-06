@@ -56,11 +56,33 @@ export function TextNode({
 				textTransform: node.textCasing,
 				fontFamily: `var(--font-project-${node.fontType})`,
 			}}
-			onChange={(event) =>
+			onChange={(event) => {
+				const nextText = event.target.value;
+				const characterWidth = Math.max(
+					node.fontSize * 0.5 + Math.max(node.letterSpacing, 0),
+					1,
+				);
+				const charactersPerLine = Math.max(
+					1,
+					Math.floor(node.width / characterWidth),
+				);
+				const lineCount = nextText
+					.split("\n")
+					.reduce(
+						(lines, paragraph) =>
+							lines +
+							Math.max(1, Math.ceil(paragraph.length / charactersPerLine)),
+						0,
+					);
+				const requiredHeight = Math.ceil(
+					lineCount * node.fontSize * node.lineHeight + node.fontSize * 0.18,
+				);
+
 				useEditorStore.getState().updateNode(cardId, node.id, {
-					text: event.target.value,
-				})
-			}
+					text: nextText,
+					height: Math.max(node.height, requiredHeight),
+				});
+			}}
 			onClick={(event) => {
 				event.stopPropagation();
 				onSelect();

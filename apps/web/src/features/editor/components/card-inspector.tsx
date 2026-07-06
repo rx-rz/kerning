@@ -100,7 +100,10 @@ export function CardInspector({ card }: CardInspectorProps) {
 							<ChevronDown className="ml-2 size-3" />
 						</button>
 					</PopoverTrigger>
-					<PopoverContent align="end" className="w-[var(--radix-popover-trigger-width)]">
+					<PopoverContent
+						align="end"
+						className="w-[var(--radix-popover-trigger-width)]"
+					>
 						<fieldset className="grid grid-cols-2 gap-1.5">
 							<legend className="sr-only">Aspect ratio</legend>
 							{ASPECT_RATIOS.map((aspectRatio) => (
@@ -126,92 +129,91 @@ export function CardInspector({ card }: CardInspectorProps) {
 					</PopoverContent>
 				</Popover>
 				<NumberField
-						id="card-width"
-						label="Width"
-						min={MIN_CARD_DIMENSION}
-						max={MAX_CARD_WIDTH}
-						value={card.width}
-						onChange={(value) => updateNumericValue("width", value)}
+					id="card-width"
+					label="Width"
+					min={MIN_CARD_DIMENSION}
+					max={MAX_CARD_WIDTH}
+					value={card.width}
+					onChange={(value) => updateNumericValue("width", value)}
 				/>
 				<NumberField
-						id="card-height"
-						label="Height"
-						min={MIN_CARD_DIMENSION}
-						max={MAX_CARD_HEIGHT}
-						value={card.height}
-						onChange={(value) => updateNumericValue("height", value)}
+					id="card-height"
+					label="Height"
+					min={MIN_CARD_DIMENSION}
+					max={MAX_CARD_HEIGHT}
+					value={card.height}
+					onChange={(value) => updateNumericValue("height", value)}
 				/>
 			</div>
 
 			<InspectorSection title="Surface">
-					<Slider
-						label="Opacity"
-						value={[card.settings.opacity]}
-						min={0}
-						max={1}
-						step={0.01}
-						showTicks={false}
-						snapToDeciles={false}
-						onValueChange={([opacity]) => {
-							if (opacity !== undefined)
-								updateCardSettings(card.id, { opacity });
-						}}
-					/>
-					<Slider
-						label="Blur"
-						value={[card.settings.blur]}
-						min={0}
-						max={10}
-						step={1}
-						showTicks={false}
-						snapToDeciles={false}
-						onValueChange={([blur]) => {
-							if (blur !== undefined) updateCardSettings(card.id, { blur });
-						}}
-					/>
+				<Slider
+					label="Opacity"
+					value={[card.settings.opacity]}
+					min={0}
+					max={1}
+					step={0.01}
+					showTicks={false}
+					snapToDeciles={false}
+					onValueChange={([opacity]) => {
+						if (opacity !== undefined) updateCardSettings(card.id, { opacity });
+					}}
+				/>
+				<Slider
+					label="Blur"
+					value={[card.settings.blur]}
+					min={0}
+					max={10}
+					step={1}
+					showTicks={false}
+					snapToDeciles={false}
+					onValueChange={([blur]) => {
+						if (blur !== undefined) updateCardSettings(card.id, { blur });
+					}}
+				/>
 			</InspectorSection>
 			<InspectorSection title="Border">
-					<NumberField
-						id="card-border-width"
-						label="Border Width"
-						min={0}
-						max={40}
-						value={card.settings.borderWidth}
-						onChange={(value) => {
-							const borderWidth = Number(value);
-							if (Number.isFinite(borderWidth)) {
-								updateCardSettings(card.id, {
-									borderWidth: Math.min(40, Math.max(0, borderWidth)),
-								});
-							}
-						}}
-					/>
-					<BorderStyleSelect
-						value={card.settings.borderStyle}
-						onChange={(borderStyle) =>
-							updateCardSettings(card.id, { borderStyle })
+				<NumberField
+					id="card-border-width"
+					label="Border Width"
+					min={0}
+					max={40}
+					value={card.settings.borderWidth}
+					onChange={(value) => {
+						const borderWidth = Number(value);
+						if (Number.isFinite(borderWidth)) {
+							updateCardSettings(card.id, {
+								borderWidth: Math.min(40, Math.max(0, borderWidth)),
+							});
 						}
-					/>
-					<ColorField
-						label="Color"
-						ariaLabel="Border color"
-						value={card.settings.borderColor}
-						onChange={(borderColor) =>
-							updateCardSettings(card.id, { borderColor })
-						}
-					/>
+					}}
+				/>
+				<BorderStyleSelect
+					value={card.settings.borderStyle}
+					onChange={(borderStyle) =>
+						updateCardSettings(card.id, { borderStyle })
+					}
+				/>
+				<ColorField
+					label="Color"
+					ariaLabel="Border color"
+					value={card.settings.borderColor}
+					onChange={(borderColor) =>
+						updateCardSettings(card.id, { borderColor })
+					}
+				/>
 			</InspectorSection>
 			<InspectorSection title="Color & fill">
-					<CardFillInspector
-						fill={card.settings.fill}
-						onChange={(fill) => updateCardSettings(card.id, { fill })}
-					/>
+				<CardFillInspector
+					fill={card.settings.fill}
+					onChange={(fill) => updateCardSettings(card.id, { fill })}
+				/>
 			</InspectorSection>
 			<InspectorSection title="Texture">
-					<CardTextureInspector
-						texture={card.settings.texture}
-						onChange={(texture) => updateCardSettings(card.id, { texture })}
-					/>
+				<CardTextureInspector
+					texture={card.settings.texture}
+					onChange={(texture) => updateCardSettings(card.id, { texture })}
+				/>
 			</InspectorSection>
 		</div>
 	);
@@ -234,11 +236,16 @@ function BorderStyleSelect({
 				>
 					<BorderStyleSwatch value={value} />
 					<span className="font-semibold">Border style</span>
-					<span className="ml-auto capitalize text-muted-foreground">{value}</span>
+					<span className="ml-auto capitalize text-muted-foreground">
+						{value}
+					</span>
 					<ChevronDown className="size-3" />
 				</button>
 			</PopoverTrigger>
-			<PopoverContent align="end" className="w-[var(--radix-popover-trigger-width)]">
+			<PopoverContent
+				align="end"
+				className="w-[var(--radix-popover-trigger-width)]"
+			>
 				<fieldset className="grid grid-cols-2 gap-1.5">
 					<legend className="sr-only">Border style</legend>
 					{BORDER_STYLES.map((style) => (
@@ -296,8 +303,16 @@ function AspectRatioSwatch({ value }: { value: CardAspectRatio }) {
 	};
 
 	return (
-		<span className="flex size-12 items-center justify-center" aria-hidden="true">
-			<span className={cn("rounded border-2 border-foreground/70 bg-primary/5", dimensions[value])} />
+		<span
+			className="flex size-12 items-center justify-center"
+			aria-hidden="true"
+		>
+			<span
+				className={cn(
+					"rounded border-2 border-foreground/70 bg-primary/5",
+					dimensions[value],
+				)}
+			/>
 		</span>
 	);
 }

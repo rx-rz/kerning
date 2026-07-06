@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
 import { ColorField } from "#/components/ui/color-field";
 import { FieldLabel } from "#/components/ui/field";
+import { Input } from "#/components/ui/input";
 import {
 	Select,
 	SelectContent,
@@ -57,14 +58,22 @@ export function CardFillInspector({
 		<div className="space-y-3">
 			<Popover>
 				<PopoverTrigger asChild>
-					<button type="button" className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-hairline bg-white px-3 text-xs">
+					<button
+						type="button"
+						className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-hairline bg-white px-3 text-xs"
+					>
 						<FillSwatch type={fill.type} />
 						<span className="font-semibold">Fill</span>
-						<span className="ml-auto text-muted-foreground">{FILL_TYPES.find(({ value }) => value === fill.type)?.label}</span>
+						<span className="ml-auto text-muted-foreground">
+							{FILL_TYPES.find(({ value }) => value === fill.type)?.label}
+						</span>
 						<ChevronDown className="size-3" />
 					</button>
 				</PopoverTrigger>
-				<PopoverContent align="end" className="w-[var(--radix-popover-trigger-width)]">
+				<PopoverContent
+					align="end"
+					className="w-[var(--radix-popover-trigger-width)]"
+				>
 					<fieldset className="grid grid-cols-2 gap-1.5">
 						<legend className="sr-only">Fill</legend>
 						{FILL_TYPES.map((option) => (
@@ -76,7 +85,8 @@ export function CardFillInspector({
 									checked={fill.type === option.value}
 									onChange={() => {
 										if (option.value === fill.type) return;
-										if (fill.type === "image" && fill.imageId) void deleteEditorImage(fill.imageId);
+										if (fill.type === "image" && fill.imageId)
+											void deleteEditorImage(fill.imageId);
 										onChange(createDefaultFill(option.value));
 									}}
 								/>
@@ -202,22 +212,22 @@ function GradientInspector({
 								onChange={(position) => updateStop(stop.id, { position })}
 							/>
 						</div>
-							{fill.stops.length > 2 ? (
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon-sm"
-									aria-label={`Delete gradient stop ${index + 1}`}
-									onClick={() =>
-										onChange({
-											...fill,
-											stops: fill.stops.filter(({ id }) => id !== stop.id),
-										})
-									}
-								>
-									<Trash2 />
-								</Button>
-							) : null}
+						{fill.stops.length > 2 ? (
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon-sm"
+								aria-label={`Delete gradient stop ${index + 1}`}
+								onClick={() =>
+									onChange({
+										...fill,
+										stops: fill.stops.filter(({ id }) => id !== stop.id),
+									})
+								}
+							>
+								<Trash2 />
+							</Button>
+						) : null}
 					</div>
 				))}
 			</div>
@@ -245,24 +255,39 @@ export function CardTextureInspector({
 						<TextureSwatch texture={selectedTexture} />
 						<span className="font-semibold">Texture</span>
 						<span className="ml-auto capitalize text-muted-foreground">
-							{TEXTURES.find(({ value }) => value === selectedTexture)?.label ?? "None"}
+							{TEXTURES.find(({ value }) => value === selectedTexture)?.label ??
+								"None"}
 						</span>
 						<ChevronDown className="size-3" />
 					</button>
 				</PopoverTrigger>
-				<PopoverContent align="end" className="w-[var(--radix-popover-trigger-width)]">
+				<PopoverContent
+					align="end"
+					className="w-[var(--radix-popover-trigger-width)]"
+				>
 					<fieldset className="grid grid-cols-3 gap-1.5">
 						<legend className="sr-only">Texture</legend>
-						{([{ value: "none", label: "None" }, ...TEXTURES] as Array<{ value: TextureChoice; label: string }>).map((option) => (
+						{(
+							[{ value: "none", label: "None" }, ...TEXTURES] as Array<{
+								value: TextureChoice;
+								label: string;
+							}>
+						).map((option) => (
 							<label key={option.value} className="cursor-pointer">
 								<input
 									type="radio"
 									name="card-texture"
 									className="peer sr-only"
 									checked={selectedTexture === option.value}
-									onChange={() => onChange(option.value === "none" ? null : createDefaultTextureFill(option.value))}
+									onChange={() =>
+										onChange(
+											option.value === "none"
+												? null
+												: createDefaultTextureFill(option.value),
+										)
+									}
 								/>
-				<span className="flex flex-col gap-1 rounded-lg border border-hairline bg-white p-1 text-center text-[10px] text-muted-foreground peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground">
+								<span className="flex flex-col gap-1 rounded-lg border border-hairline bg-white p-1 text-center text-[10px] text-muted-foreground peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground">
 									<TextureSwatch texture={option.value} large />
 									{option.label}
 								</span>
@@ -274,19 +299,25 @@ export function CardTextureInspector({
 
 			{texture ? (
 				<div className="space-y-3">
-						<RangeField
-							label="Opacity"
-							value={texture.opacity}
-							onChange={(opacity) => onChange({ ...texture, opacity })}
-						/>
-						<TextureSettings fill={texture} onChange={onChange} />
+					<RangeField
+						label="Opacity"
+						value={texture.opacity}
+						onChange={(opacity) => onChange({ ...texture, opacity })}
+					/>
+					<TextureSettings fill={texture} onChange={onChange} />
 				</div>
 			) : null}
 		</div>
 	);
 }
 
-function TextureSwatch({ texture, large = false }: { texture: TextureChoice; large?: boolean }) {
+function TextureSwatch({
+	texture,
+	large = false,
+}: {
+	texture: TextureChoice;
+	large?: boolean;
+}) {
 	const background =
 		texture === "paper"
 			? "repeating-radial-gradient(circle at 30% 40%,#4457fd 0 1px,#f1f2ff 1px 4px)"
@@ -298,7 +329,17 @@ function TextureSwatch({ texture, large = false }: { texture: TextureChoice; lar
 						? "radial-gradient(circle at 35% 35%,#4457fd 0 1px,transparent 2px),radial-gradient(circle at 65% 65%,#7c3aed 0 1px,transparent 2px),#c7ccff"
 						: "linear-gradient(135deg,#fff 45%,#d7dbe0 45% 55%,#fff 55%)";
 
-	return <span aria-hidden="true" className={large ? "mx-auto size-12 rounded-md border border-hairline" : "size-7 shrink-0 rounded-md border border-hairline"} style={{ background }} />;
+	return (
+		<span
+			aria-hidden="true"
+			className={
+				large
+					? "mx-auto size-12 rounded-md border border-hairline"
+					: "size-7 shrink-0 rounded-md border border-hairline"
+			}
+			style={{ background }}
+		/>
+	);
 }
 
 function FillSwatch({
@@ -344,7 +385,7 @@ function ImageFillSettings({
 		setIsUploading(true);
 		try {
 			const imageId = await replaceEditorImage(file, fill.imageId);
-			onChange({ ...fill, imageId });
+			onChange({ ...fill, imageId, src: "" });
 		} finally {
 			setIsUploading(false);
 		}
@@ -352,6 +393,20 @@ function ImageFillSettings({
 
 	return (
 		<>
+			<div className="space-y-1.5">
+				<FieldLabel htmlFor="card-background-url">Image URL</FieldLabel>
+				<Input
+					id="card-background-url"
+					type="url"
+					placeholder="https://example.com/image.jpg"
+					value={fill.src ?? ""}
+					onChange={(event) => {
+						const src = event.target.value;
+						if (src && fill.imageId) void deleteEditorImage(fill.imageId);
+						onChange({ ...fill, src, imageId: src ? null : fill.imageId });
+					}}
+				/>
+			</div>
 			<Button
 				type="button"
 				variant="outline"

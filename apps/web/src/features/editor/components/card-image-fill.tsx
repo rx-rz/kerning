@@ -2,7 +2,8 @@ import { useStoredImageUrl } from "#/features/editor/hooks/use-stored-image-url"
 import type { ImageCardFill } from "#/features/editor/types";
 
 export function CardImageFill({ fill }: { fill: ImageCardFill }) {
-	const imageUrl = useStoredImageUrl(fill.imageId);
+	const storedImageUrl = useStoredImageUrl(fill.imageId);
+	const imageUrl = storedImageUrl || fill.src;
 
 	if (!imageUrl) return null;
 

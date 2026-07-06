@@ -1,4 +1,4 @@
-import { LayoutTemplate, SwatchBook, X } from "lucide-react";
+import { SwatchBook, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "#/components/ui/button";
@@ -6,6 +6,8 @@ import { ShapeGraphic } from "#/features/editor/components/shape-node";
 import {
 	EDITOR_TEMPLATES,
 	type EditorTemplate,
+	resolveTemplateFonts,
+	type TemplateFontAvailability,
 } from "#/features/editor/lib/editor-templates";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 import type { EditorNode } from "#/features/editor/types";
@@ -16,9 +18,11 @@ type TemplateFilter = "All" | EditorTemplate["category"];
 export function TemplateSidebar({
 	cardId,
 	onClose,
+	availableFonts,
 }: {
 	cardId: string;
 	onClose: () => void;
+	availableFonts: TemplateFontAvailability;
 }) {
 	const [filter, setFilter] = useState<TemplateFilter>("All");
 	const applyTemplate = useEditorStore((state) => state.applyTemplate);
@@ -27,7 +31,7 @@ export function TemplateSidebar({
 	);
 
 	return (
-		<aside className="fixed top-2 bottom-2 left-2 z-60 flex w-[min(24rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-2xl border border-hairline bg-white shadow-[0_20px_60px_rgba(15,23,42,0.16)]">
+		<aside className="fixed top-2 bottom-2 left-2 z-60 flex w-[min(24rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-2xl border border-white/60 bg-surface-glass shadow-[0_20px_60px_rgba(15,23,42,0.16)] backdrop-blur-3xl">
 			<header className="flex items-center gap-3 border-b border-hairline px-4 py-4">
 				<span className="flex size-9 items-center justify-center rounded-lg bg-accent text-background">
 					<SwatchBook className="size-4" />
@@ -68,7 +72,12 @@ export function TemplateSidebar({
 						key={template.id}
 						type="button"
 						className="group flex flex-col rounded-xl border border-hairline bg-surface-wash p-2 text-left shadow-[0_8px_20px_rgba(15,23,42,.06)] transition-transform hover:-translate-y-0.5"
-						onClick={() => applyTemplate(cardId, template.card)}
+						onClick={() =>
+							applyTemplate(
+								cardId,
+								resolveTemplateFonts(template.card, availableFonts),
+							)
+						}
 					>
 						<TemplatePreview template={template} />
 						<span className="mt-2 flex w-full items-center gap-2 px-1">
@@ -97,15 +106,32 @@ function TemplatePreview({ template }: { template: EditorTemplate }) {
 				template.aspectRatio === "1:1" ? "size-[140px]" : "h-44 w-[99px]",
 			)}
 			style={{
-				backgroundColor:
-					card.settings.fill.type === "solid"
-						? card.settings.fill.color
-						: "#FFFFFF",
+				backgroundColor: "#FFFFFF",
 			}}
 		>
+			{card.settings.fill.type === "image" && card.settings.fill.src ? (
+				<img
+					className="absolute inset-0 size-full"
+					src={card.settings.fill.src}
+					alt=""
+					loading="lazy"
+					style={{
+						objectFit:
+							card.settings.fill.settings.backgroundSize === "contain"
+								? "contain"
+								: "cover",
+						objectPosition: `${card.settings.fill.settings.originX}% ${card.settings.fill.settings.originY}%`,
+						opacity: card.settings.fill.opacity,
+					}}
+				/>
+			) : null}
 			<span
 				className="absolute top-0 left-0 block origin-top-left"
-				style={{ width: card.width, height: card.height, transform: `scale(${scale})` }}
+				style={{
+					width: card.width,
+					height: card.height,
+					transform: `scale(${scale})`,
+				}}
 			>
 				{card.nodes.map((node) => (
 					<TemplateNodePreview key={node.id} node={node} />
@@ -126,7 +152,7 @@ function TemplateNodePreview({ node }: { node: EditorNode }) {
 	if (node.type === "text") {
 		return (
 			<span
-				className="absolute overflow-hidden whitespace-pre-wrap"
+				className="absolute overflow-visible whitespace-pre-wrap"
 				style={{
 					...style,
 					fontSize: node.fontSize,
@@ -135,6 +161,7 @@ function TemplateNodePreview({ node }: { node: EditorNode }) {
 					letterSpacing: node.letterSpacing,
 					color: node.color,
 					textAlign: node.textAlign,
+					fontFamily: `var(--font-project-${node.fontType})`,
 				}}
 			>
 				{node.text}
@@ -147,6 +174,25 @@ function TemplateNodePreview({ node }: { node: EditorNode }) {
 			<span className="absolute flex items-center justify-center" style={style}>
 				<ShapeGraphic node={node} />
 			</span>
+		);
+	}
+
+	if (node.type === "image") {
+		return (
+			<img
+				className="absolute block"
+				src={node.src}
+				alt=""
+				loading="lazy"
+				style={{
+					...style,
+					objectFit: node.objectFit,
+					objectPosition: `${node.positionX}% ${node.positionY}%`,
+					opacity: node.opacity,
+					mixBlendMode: node.blendMode ?? "normal",
+					filter: `brightness(${node.effects.brightness}%) contrast(${node.effects.contrast}%) saturate(${node.effects.saturation}%) grayscale(${node.effects.grayscale}%) sepia(${node.effects.sepia}%)`,
+				}}
+			/>
 		);
 	}
 

@@ -1,14 +1,15 @@
-import { PanelRightOpen } from "lucide-react";
-import { useEffect, useState } from "react";
 import type { ProjectFontEntity } from "@kerning/shared";
+import { PanelRightOpen } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useProjectApi } from "#/api/projects/detail";
-import { loadGoogleFontStylesheet } from "#/lib/fonts";
-
+import { useUpdateProjectApi } from "#/api/projects/update";
 import { Button } from "#/components/ui/button";
 import { EditorCanvas } from "#/features/editor/components/editor-canvas";
 import { EditorInspector } from "#/features/editor/components/editor-inspector";
+import { GlyphViewer } from "#/features/editor/components/glyph-viewer";
 import { TemplateSidebar } from "#/features/editor/components/template-sidebar";
 import { useEditorStore } from "#/features/editor/store/editor-store";
+import { loadGoogleFontStylesheet } from "#/lib/fonts";
 
 export function EditorPage() {
 	return <EditorWorkspace />;
@@ -16,6 +17,7 @@ export function EditorPage() {
 
 export function ProjectEditorPage({ projectId }: { projectId: string }) {
 	const { data } = useProjectApi(projectId);
+	const updateProject = useUpdateProjectApi(projectId);
 	const projectFonts = data?.project.fonts;
 
 	useEffect(() => {
@@ -54,6 +56,8 @@ export function ProjectEditorPage({ projectId }: { projectId: string }) {
 
 	return (
 		<EditorWorkspace
+			projectTitle={data?.project.name}
+			onProjectTitleChange={(name) => updateProject.mutate({ name })}
 			primary={primary}
 			secondaryOne={secondaryOne}
 			secondaryTwo={secondaryTwo}
@@ -62,16 +66,52 @@ export function ProjectEditorPage({ projectId }: { projectId: string }) {
 }
 
 function EditorWorkspace({
+	projectTitle,
+	onProjectTitleChange,
 	primary,
 	secondaryOne,
 	secondaryTwo,
 }: {
+	projectTitle?: string;
+	onProjectTitleChange?: (title: string) => void;
 	primary?: ProjectFontEntity;
 	secondaryOne?: ProjectFontEntity;
 	secondaryTwo?: ProjectFontEntity;
 } = {}) {
 	const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 	const [templateCardId, setTemplateCardId] = useState<string | null>(null);
+	const [isGlyphViewerOpen, setIsGlyphViewerOpen] = useState(false);
+	const glyphFonts = useMemo(
+		() =>
+			[
+				primary
+					? { font: primary, role: "primary" as const, roleLabel: "Primary" }
+					: null,
+				secondaryOne
+					? {
+							font: secondaryOne,
+							role: "sec1" as const,
+							roleLabel: "Secondary one",
+						}
+					: null,
+				secondaryTwo
+					? {
+							font: secondaryTwo,
+							role: "sec2" as const,
+							roleLabel: "Secondary two",
+						}
+					: null,
+			].filter((option) => option !== null),
+		[primary, secondaryOne, secondaryTwo],
+	);
+
+	function fontStack(...fonts: Array<ProjectFontEntity | undefined>): string {
+		const names = fonts.flatMap((font) => {
+			const name = font?.cssFamily ?? font?.family;
+			return name ? [JSON.stringify(name)] : [];
+		});
+		return [...new Set(names), "system-ui", "sans-serif"].join(", ");
+	}
 
 	useEffect(() => {
 		useEditorStore.persist.rehydrate();
@@ -82,33 +122,40 @@ function EditorWorkspace({
 			className="h-dvh min-w-240 overflow-hidden bg-surface-wash text-foreground"
 			style={
 				{
-					"--font-project-primary":
-						primary?.cssFamily ?? primary?.family ?? "inherit",
-					"--font-project-sec1":
-						secondaryOne?.cssFamily ??
-						secondaryOne?.family ??
-						primary?.cssFamily ??
-						primary?.family ??
-						"inherit",
-					"--font-project-sec2":
-						secondaryTwo?.cssFamily ??
-						secondaryTwo?.family ??
-						primary?.cssFamily ??
-						primary?.family ??
-						"inherit",
+					"--font-project-primary": fontStack(
+						primary,
+						secondaryOne,
+						secondaryTwo,
+					),
+					"--font-project-sec1": fontStack(secondaryOne, primary, secondaryTwo),
+					"--font-project-sec2": fontStack(secondaryTwo, secondaryOne, primary),
 				} as React.CSSProperties
 			}
 		>
 			<EditorCanvas
+				projectTitle={projectTitle}
+				onProjectTitleChange={onProjectTitleChange}
 				onToggleInspector={() => setIsInspectorOpen((isOpen) => !isOpen)}
+				onSelectNode={() => setIsInspectorOpen(true)}
 				onOpenTemplates={setTemplateCardId}
+				onOpenGlyphViewer={() => setIsGlyphViewerOpen(true)}
 			/>
 			{templateCardId ? (
 				<TemplateSidebar
 					cardId={templateCardId}
 					onClose={() => setTemplateCardId(null)}
+					availableFonts={{
+						primary: Boolean(primary),
+						sec1: Boolean(secondaryOne),
+						sec2: Boolean(secondaryTwo),
+					}}
 				/>
 			) : null}
+			<GlyphViewer
+				fonts={glyphFonts}
+				open={isGlyphViewerOpen}
+				onOpenChange={setIsGlyphViewerOpen}
+			/>
 			{isInspectorOpen ? (
 				<EditorInspector onClose={() => setIsInspectorOpen(false)} />
 			) : (
@@ -117,7 +164,7 @@ function EditorWorkspace({
 					aria-label="Open inspector"
 					variant="ghost"
 					size="icon"
-					className="fixed top-2.5 right-2.5 z-40 border border-hairline bg-white/90 shadow-hairline backdrop-blur-3xl"
+					className="fixed top-2.5 right-2.5 z-40 border border-white/60 bg-surface-glass shadow-hairline backdrop-blur-3xl"
 					onClick={() => setIsInspectorOpen(true)}
 				>
 					<PanelRightOpen />

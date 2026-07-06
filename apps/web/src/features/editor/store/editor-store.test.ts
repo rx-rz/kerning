@@ -122,6 +122,7 @@ describe("editor store", () => {
 			type: "image",
 			width: 220,
 			imageId: null,
+			blendMode: "normal",
 			zoom: 1,
 			positionX: 50,
 			positionY: 50,
@@ -143,7 +144,9 @@ describe("editor store", () => {
 		if (!shape) throw new Error("Expected an ellipse shape");
 
 		expect(SHAPE_LIBRARY).toHaveLength(200);
-		expect(new Set(SHAPE_LIBRARY.map(({ category }) => category)).size).toBeGreaterThan(4);
+		expect(
+			new Set(SHAPE_LIBRARY.map(({ category }) => category)).size,
+		).toBeGreaterThan(4);
 		useEditorStore.getState().addShapeNode(card.id, {
 			shapeType: shape.type,
 			shape: shape.value,
@@ -164,16 +167,37 @@ describe("editor store", () => {
 		useEditorStore.getState().applyTemplate(card.id, album.card);
 		const templatedCard = getCardAt(useEditorStore.getState().cards, 0);
 
-		expect(EDITOR_TEMPLATES).toHaveLength(20);
+		expect(EDITOR_TEMPLATES).toHaveLength(40);
+		expect(
+			EDITOR_TEMPLATES.filter(({ category }) => category === "Album covers"),
+		).toHaveLength(20);
+		expect(
+			EDITOR_TEMPLATES.filter(({ category }) => category === "Movie posters"),
+		).toHaveLength(20);
+		expect(
+			EDITOR_TEMPLATES.every(
+				({ card }) =>
+					card.settings.fill.type === "image" &&
+					card.nodes.some(({ type }) => type === "image"),
+			),
+		).toBe(true);
 		expect(templatedCard).toMatchObject({
 			id: card.id,
 			name: "brat",
 			width: 500,
 			height: 500,
-			settings: { aspectRatio: "1:1" },
+			settings: {
+				aspectRatio: "1:1",
+				fill: { type: "image", src: expect.stringContaining("cdn.cosmos.so") },
+			},
 		});
-		expect(templatedCard.nodes).toHaveLength(1);
-		expect(templatedCard.nodes[0]).toMatchObject({ type: "text", text: "brat" });
+		expect(templatedCard.nodes.length).toBeGreaterThanOrEqual(5);
+		expect(
+			templatedCard.nodes.find(({ type }) => type === "text"),
+		).toMatchObject({
+			type: "text",
+			text: "brat",
+		});
 		expect(templatedCard.nodes[0]?.id).not.toBe(album.card.nodes[0]?.id);
 	});
 
@@ -190,9 +214,9 @@ describe("editor store", () => {
 		});
 
 		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
-			x: 3,
-			y: 3,
-			width: 549,
+			x: 0,
+			y: 0,
+			width: 560,
 		});
 	});
 
