@@ -37,7 +37,7 @@ function FieldError({
   }
 
   return (
-    <p data-slot="field-error" className={cn('font-mono text-[11px] font-semibold tracking-[.04em] text-destructive', className)} {...props}>
+    <p data-slot="field-error" className={cn('font-sans text-[11px] font-semibold tracking-[.04em] text-destructive', className)} {...props}>
       {message}
     </p>
   )

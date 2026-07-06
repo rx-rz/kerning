@@ -19,7 +19,7 @@ function DashboardRoute() {
         <div className="flex items-center justify-between gap-4 md:block">
           <Link to={APP_ROUTES.DASHBOARD} className="flex items-center gap-3">
             <img src="/logo.png" alt="Kerning" className="size-9 border" />
-            <span className="font-mono text-xs font-semibold uppercase tracking-[0.08em]">
+            <span className="font-sans text-xs font-semibold uppercase tracking-[0.08em]">
               Kerning
             </span>
           </Link>
@@ -47,7 +47,7 @@ function DashboardRoute() {
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="font-mono text-xs font-semibold uppercase text-muted-foreground">
+              <p className="font-sans text-xs font-semibold uppercase text-muted-foreground">
                 Dashboard
               </p>
               <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">
@@ -105,7 +105,7 @@ function DashboardRoute() {
                           {project.fonts?.length ?? 0}{" "}
                           {(project.fonts?.length ?? 0) === 1 ? "font" : "fonts"}
                         </span>
-                        <span className="font-mono uppercase">
+                        <span className="font-sans uppercase">
                           v{project.version}
                         </span>
                       </div>

@@ -3,6 +3,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Info,
+	Languages,
 	Lock,
 	LockOpen,
 	Plus,
@@ -194,7 +195,7 @@ export function EditorCanvas({
 				className="absolute top-3 left-3 z-30 border border-white/60 bg-surface-glass shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-3xl"
 				onClick={onOpenGlyphViewer}
 			>
-				<ScanText />
+				<Languages />
 			</Button>
 			<div
 				aria-label="Project controls"

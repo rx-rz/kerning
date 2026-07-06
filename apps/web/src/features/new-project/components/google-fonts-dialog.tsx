@@ -299,7 +299,7 @@ function GoogleFontCard({
           >
             {font.family}
           </h3>
-          <p className="mt-1 font-mono text-[11px] font-semibold uppercase text-muted-foreground">
+          <p className="mt-1 font-sans text-[11px] font-semibold uppercase text-muted-foreground">
             {font.category} / {font.variants.length} variants
           </p>
         </div>
@@ -311,7 +311,7 @@ function GoogleFontCard({
                 key={mode}
                 type="button"
                 className={cn(
-                  "flex size-9 items-center justify-center rounded-md font-mono text-[11px] font-semibold uppercase text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                  "flex size-9 items-center justify-center rounded-md font-sans text-[11px] font-semibold uppercase text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
                   specimenMode === mode && "bg-foreground text-background",
                 )}
                 onClick={() => onSpecimenModeChange(mode as SpecimenMode)}

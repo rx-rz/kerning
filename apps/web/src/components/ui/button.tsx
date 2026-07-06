@@ -7,7 +7,7 @@ import { cn } from "#/lib/utils.ts"
 const buttonVariants = cva(
   [
     "relative isolate inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap",
-    "rounded-lg border-0 font-mono text-[11px] font-semibold tracking-[.04em] outline-none",
+    "rounded-lg border-0 font-sans text-[11px] font-semibold tracking-[.04em] outline-none",
     "transition-[transform,filter,box-shadow,background-color,color,border-color,opacity] duration-150 ease-[cubic-bezier(.2,.8,.2,1)]",
     "hover:brightness-[1.025] active:scale-[.985] motion-reduce:transform-none motion-reduce:transition-none",
     "focus-visible:ring-[3px] focus-visible:ring-ring/25",

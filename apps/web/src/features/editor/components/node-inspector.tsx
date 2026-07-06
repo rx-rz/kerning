@@ -417,7 +417,7 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 				</Field>
 				<div className="space-y-2 pt-2">
 					<div className="flex items-center justify-between">
-						<h4 className="font-mono text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
+						<h4 className="font-sans text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
 							Composition
 						</h4>
 						<Button
@@ -463,7 +463,7 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 					/>
 				</div>
 				<div className="space-y-2 pt-2">
-					<h4 className="font-mono text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
+					<h4 className="font-sans text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
 						Effects
 					</h4>
 					{(

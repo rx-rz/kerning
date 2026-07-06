@@ -70,7 +70,7 @@ function TabsTrigger({
       className={cn(
         [
           "relative inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 whitespace-nowrap",
-          "px-4 py-2 font-mono text-[11px] font-semibold tracking-[.04em]",
+          "px-4 py-2 font-sans text-[11px] font-semibold tracking-[.04em]",
           "text-muted-foreground outline-none transition-[color,background-color,box-shadow,opacity,filter,transform] duration-150 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transform-none motion-reduce:transition-none",
           "hover:brightness-[1.025] hover:text-foreground active:scale-[.985]",
           "focus-visible:ring-[3px] focus-visible:ring-ring/25",

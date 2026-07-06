@@ -70,7 +70,7 @@ export function FontSelectSection({
 
 	return (
 		<section className="space-y-3 ">
-			<div className="font-mono text-lg font-semibold uppercase  text-muted-foreground">
+			<div className="font-sans text-lg font-semibold uppercase  text-muted-foreground">
 				Font Selection
 			</div>
 

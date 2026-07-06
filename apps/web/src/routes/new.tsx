@@ -425,7 +425,7 @@ function ConfirmProjectView({
 
 					<label
 						htmlFor="project-name"
-						className="mb-2 mt-8 block font-mono text-xs font-semibold uppercase text-muted-foreground"
+						className="mb-2 mt-8 block font-sans text-xs font-semibold uppercase text-muted-foreground"
 					>
 						Project Name
 					</label>
@@ -530,7 +530,7 @@ function FontSpecimenRow({
 				className="self-end -mt-1 text-foreground"
 				style={{ fontFamily: font.cssFamily }}
 			>
-				<p className="mb-2 font-mono">{label}</p>
+				<p className="mb-2 font-sans">{label}</p>
 				<p className="max-w-md text-lg font-semibold leading-tight tracking-normal sm:text-2xl">
 					The quick brown fox jumps over the lazy dog
 				</p>
@@ -593,7 +593,7 @@ function SupportedFontFormats() {
 							Ff
 						</div>
 						<div className="min-w-0">
-							<div className="font-mono flex items-center text-sm font-semibold uppercase text-foreground">
+							<div className="font-sans flex items-center text-sm font-semibold uppercase text-foreground">
 								{format.name}:{" "}
 								<span className="capitalize ml-2">{format.description}</span>
 							</div>

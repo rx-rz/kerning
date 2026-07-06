@@ -14,7 +14,7 @@ export function UploadedFonts({ fonts, onDeleteFont }: Props) {
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center gap-3 font-mono text-sm font-semibold uppercase  text-muted-foreground sm:text-lg">
+      <div className="flex items-center gap-3 font-sans text-sm font-semibold uppercase  text-muted-foreground sm:text-lg">
         <span>Uploaded Fonts</span>
         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tracking-normal">
           {fonts.length}

@@ -3,35 +3,19 @@
 @import 'tw-animate-css';
 
 @font-face {
-  font-family: 'Schibsted Grotesk';
-  src: url('/fonts/schibsted-grotesk-400.ttf') format('truetype');
+  font-family: 'Geist';
+  src: url('/fonts/geist.woff2') format('woff2');
   font-display: swap;
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 900;
 }
 
 @font-face {
-  font-family: 'Schibsted Grotesk';
-  src: url('/fonts/schibsted-grotesk-500.ttf') format('truetype');
+  font-family: 'Geist Mono';
+  src: url('/fonts/geist-mono.woff2') format('woff2');
   font-display: swap;
   font-style: normal;
-  font-weight: 500;
-}
-
-@font-face {
-  font-family: 'Schibsted Grotesk';
-  src: url('/fonts/schibsted-grotesk-600.ttf') format('truetype');
-  font-display: swap;
-  font-style: normal;
-  font-weight: 600;
-}
-
-@font-face {
-  font-family: 'Schibsted Grotesk';
-  src: url('/fonts/schibsted-grotesk-700.ttf') format('truetype');
-  font-display: swap;
-  font-style: normal;
-  font-weight: 700;
+  font-weight: 100 900;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -252,8 +236,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Schibsted Grotesk', sans-serif;
-  --font-mono: 'Schibsted Grotesk', sans-serif;
+  --font-sans: 'Geist', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -332,8 +316,9 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     font-size: 14px;
+    font-weight: 350;
     line-height: 1.55;
-    letter-spacing: 0;
+    letter-spacing: -0.015em;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -344,6 +329,26 @@
     color: inherit;
   }
 
+  label,
+  [data-slot='field-label'] {
+    font-family: var(--font-sans);
+  }
+
+  input,
+  textarea,
+  [data-slot='select-value'],
+  output,
+  time,
+  data {
+    font-family: var(--font-mono);
+    letter-spacing: -0.025em;
+  }
+
+  input[type='number'],
+  input[inputmode='numeric'] {
+    font-variant-numeric: tabular-nums;
+  }
+
   a {
     color: inherit;
     text-decoration: none;
@@ -352,7 +357,7 @@
 
 @layer components {
   .mono-label {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.06em;

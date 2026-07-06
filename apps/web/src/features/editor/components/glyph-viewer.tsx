@@ -264,7 +264,7 @@ export function GlyphViewer({ fonts, open, onOpenChange }: GlyphViewerProps) {
 					Inspect every printable character available in a project font.
 				</DialogDescription>
 				{/* <header className="flex min-h-16 items-center gap-4 border-b border-hairline px-6 pr-16">
-					<span className="font-mono text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+					<span className="font-sans text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
 						Glyph viewer
 					</span>
 					<Select value={selectedFontId} onValueChange={setSelectedFontId}>
