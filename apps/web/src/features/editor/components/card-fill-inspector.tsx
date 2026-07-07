@@ -769,7 +769,10 @@ function OptionField({
 }) {
 	return (
 		<Select value={value} onValueChange={onChange}>
-			<SelectTrigger className="w-full">
+			<SelectTrigger
+				size="compact"
+				className="min-h-9 w-full px-3 py-2 text-sm font-bold"
+			>
 				<span className="mono-label mr-auto text-muted-foreground">
 					{label}
 				</span>
@@ -777,7 +780,11 @@ function OptionField({
 			</SelectTrigger>
 			<SelectContent align="end">
 				{options.map((option) => (
-					<SelectItem key={option} value={option}>
+					<SelectItem
+						key={option}
+						value={option}
+						className="min-h-8 py-1.5 text-sm font-bold"
+					>
 						{option}
 					</SelectItem>
 				))}

@@ -17,7 +17,7 @@ export const ProjectIdSchema = v.pipe(
 export const ProjectNameSchema = v.pipe(
   v.string(),
   v.trim(),
-  v.minLength(1, "Project name is required"),
+  v.minLength(2, "Project name must be at least 2 characters"),
   v.maxLength(120, "Project name must be 120 characters or fewer"),
 );
 

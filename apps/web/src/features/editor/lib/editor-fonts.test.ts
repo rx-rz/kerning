@@ -1,12 +1,16 @@
+import { readFile } from "node:fs/promises";
 import type { ProjectFontFace } from "@kerning/shared";
 import { describe, expect, it } from "vitest";
 import {
+	EDITOR_TEMPLATES,
 	getTemplateFontType,
+	resolveTemplateFonts,
 	resolveTemplateFontType,
 } from "#/features/editor/lib/editor-templates";
 import {
 	extractGoogleFontUrls,
 	normalizeGlyphMetrics,
+	prepareFontBuffer,
 	selectPreferredFace,
 } from "#/features/editor/lib/glyph-font";
 
@@ -76,6 +80,20 @@ describe("editor font helpers", () => {
 		});
 	});
 
+	it("decompresses WOFF2 fonts before outline parsing", async () => {
+		const source = await readFile(
+			new URL("../../../../public/fonts/geist.woff2", import.meta.url),
+		);
+		const prepared = await prepareFontBuffer(
+			source.buffer.slice(
+				source.byteOffset,
+				source.byteOffset + source.byteLength,
+			) as ArrayBuffer,
+		);
+
+		expect([...new Uint8Array(prepared, 0, 4)]).toEqual([0, 1, 0, 0]);
+	});
+
 	it("assigns semantic template roles and resolves missing fonts", () => {
 		expect(getTemplateFontType("poster-title")).toBe("primary");
 		expect(getTemplateFontType("poster-sub")).toBe("sec1");
@@ -95,5 +113,20 @@ describe("editor font helpers", () => {
 				sec2: true,
 			}),
 		).toBe("primary");
+	});
+
+	it("mixes all three font roles across templates with enough text", () => {
+		const available = { primary: true, sec1: true, sec2: true };
+
+		for (const template of EDITOR_TEMPLATES) {
+			const textNodes = resolveTemplateFonts(
+				template.card,
+				available,
+			).nodes.filter((node) => node.type === "text");
+			if (textNodes.length < 3) continue;
+			expect(new Set(textNodes.map((node) => node.fontType))).toEqual(
+				new Set(["primary", "sec1", "sec2"]),
+			);
+		}
 	});
 });

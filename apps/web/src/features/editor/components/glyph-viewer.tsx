@@ -471,17 +471,29 @@ export function GlyphViewer({ fonts, open, onOpenChange }: GlyphViewerProps) {
 				</DialogDescription>
 				<header className="flex min-h-16 items-center gap-3 border-b border-hairline px-4 pr-14">
 					<Select value={primaryId} onValueChange={changePrimary}>
-						<SelectTrigger className="w-auto min-w-52 border-0 bg-transparent px-2 text-base font-semibold shadow-none">
+						<SelectTrigger
+							size="compact"
+							className="min-h-9 w-auto min-w-52 border-0 bg-transparent px-2 py-2 text-sm font-bold shadow-none"
+						>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent className="z-90" position="popper" align="start">
 							{fonts.map((option) => (
-								<SelectItem key={option.font.dbId} value={option.font.dbId}>
+								<SelectItem
+									key={option.font.dbId}
+									value={option.font.dbId}
+									className="min-h-8 py-1.5 text-sm font-bold"
+								>
 									{option.font.family} · {option.roleLabel}
 								</SelectItem>
 							))}
 							{fonts.length === 0 ? (
-								<SelectItem value={SYSTEM_FONT_ID}>System font</SelectItem>
+								<SelectItem
+									value={SYSTEM_FONT_ID}
+									className="min-h-8 py-1.5 text-sm font-bold"
+								>
+									System font
+								</SelectItem>
 							) : null}
 						</SelectContent>
 					</Select>
@@ -515,13 +527,18 @@ export function GlyphViewer({ fonts, open, onOpenChange }: GlyphViewerProps) {
 						>
 							<SelectTrigger
 								aria-label="Add comparison font"
-								className="h-9 min-h-9 w-9 rounded-full px-0 [&>svg:last-child]:hidden"
+								size="compact"
+								className="h-9 min-h-9 w-9 rounded-full px-0 text-sm font-bold [&>svg:last-child]:hidden"
 							>
 								<Plus className="size-4" />
 							</SelectTrigger>
 							<SelectContent className="z-90">
 								{unusedFonts.map((option) => (
-									<SelectItem key={option.font.dbId} value={option.font.dbId}>
+									<SelectItem
+										key={option.font.dbId}
+										value={option.font.dbId}
+										className="min-h-8 py-1.5 text-sm font-bold"
+									>
 										{option.font.family}
 									</SelectItem>
 								))}

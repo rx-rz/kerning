@@ -1,3 +1,4 @@
+import type { ProjectFontEntity } from "@kerning/shared";
 import { X } from "lucide-react";
 
 import { Button } from "#/components/ui/button";
@@ -8,9 +9,10 @@ import { useEditorStore } from "#/features/editor/store/editor-store";
 
 type EditorInspectorProps = {
 	onClose: () => void;
+	fonts?: Partial<Record<"primary" | "sec1" | "sec2", ProjectFontEntity>>;
 };
 
-export function EditorInspector({ onClose }: EditorInspectorProps) {
+export function EditorInspector({ onClose, fonts }: EditorInspectorProps) {
 	const selectedCard = useEditorStore((state) =>
 		state.cards.find((card) => card.id === state.selectedCardId),
 	);
@@ -33,7 +35,11 @@ export function EditorInspector({ onClose }: EditorInspectorProps) {
 			</Button>
 			<div className="mt-8 flex min-h-0 flex-1 flex-col overflow-y-auto">
 				{selectedCard && selectedNode ? (
-					<NodeInspector card={selectedCard} node={selectedNode} />
+					<NodeInspector
+						card={selectedCard}
+						node={selectedNode}
+						fonts={fonts}
+					/>
 				) : selectedCard ? (
 					<CardInspector card={selectedCard} />
 				) : (

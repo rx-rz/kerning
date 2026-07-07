@@ -103,6 +103,36 @@ async function getFontSourceUrls(font: ProjectFontEntity) {
 	return urls;
 }
 
+function isWoff2(buffer: ArrayBuffer) {
+	const signature = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 4));
+	return (
+		signature.length === 4 &&
+		signature[0] === 0x77 &&
+		signature[1] === 0x4f &&
+		signature[2] === 0x46 &&
+		signature[3] === 0x32
+	);
+}
+
+export async function prepareFontBuffer(buffer: ArrayBuffer) {
+	if (!isWoff2(buffer)) return buffer;
+	const { default: decoder } = await import(
+		"wawoff2/build/decompress_binding.js"
+	);
+	if (!decoder.decompress) {
+		await new Promise<void>((resolve) => {
+			decoder.onRuntimeInitialized = resolve;
+		});
+	}
+	const decompressed = decoder.decompress?.(new Uint8Array(buffer));
+	if (!decompressed)
+		throw new Error("The WOFF2 font could not be decompressed.");
+	return decompressed.buffer.slice(
+		decompressed.byteOffset,
+		decompressed.byteOffset + decompressed.byteLength,
+	) as ArrayBuffer;
+}
+
 function isPrintableCodePoint(codePoint: number) {
 	if (codePoint <= 0 || codePoint > 0x10ffff) return false;
 	return !NON_PRINTING_CHARACTER.test(String.fromCodePoint(codePoint));
@@ -180,14 +210,23 @@ export function loadGlyphFont(font: ProjectFontEntity, cacheBust = 0) {
 			sourceUrls.map(async (sourceUrl) => {
 				const response = await fetch(sourceUrl);
 				if (!response.ok) throw new Error(`Could not download ${sourceUrl}`);
-				return opentype.parse(await response.arrayBuffer());
+				return opentype.parse(
+					await prepareFontBuffer(await response.arrayBuffer()),
+				);
 			}),
 		);
 		const fonts = results.flatMap((result) =>
 			result.status === "fulfilled" ? [result.value] : [],
 		);
-		if (!fonts.length)
-			throw new Error("The selected font could not be parsed.");
+		if (!fonts.length) {
+			const failure = results.find(
+				(result): result is PromiseRejectedResult =>
+					result.status === "rejected",
+			);
+			throw new Error("The selected font could not be parsed.", {
+				cause: failure?.reason,
+			});
+		}
 
 		return {
 			fonts,

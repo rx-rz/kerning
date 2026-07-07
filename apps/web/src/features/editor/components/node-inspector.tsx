@@ -1,3 +1,4 @@
+import type { ProjectFontEntity } from "@kerning/shared";
 import {
 	AlignCenter,
 	AlignJustify,
@@ -42,9 +43,10 @@ import type {
 type NodeInspectorProps = {
 	card: EditorCard;
 	node: EditorNode;
+	fonts?: Partial<Record<TextNode["fontType"], ProjectFontEntity>>;
 };
 
-export function NodeInspector({ card, node }: NodeInspectorProps) {
+export function NodeInspector({ card, node, fonts }: NodeInspectorProps) {
 	const updateNode = useEditorStore((state) => state.updateNode);
 
 	function updateNumericValue(
@@ -59,7 +61,7 @@ export function NodeInspector({ card, node }: NodeInspectorProps) {
 	return (
 		<div className="space-y-3 px-4 py-5">
 			{node.type === "text" ? (
-				<TextSettings cardId={card.id} node={node} />
+				<TextSettings cardId={card.id} node={node} fonts={fonts} />
 			) : node.type === "image" ? (
 				<ImageSettings cardId={card.id} node={node} />
 			) : (
@@ -142,8 +144,21 @@ function ShapeSettings({ cardId, node }: { cardId: string; node: ShapeNode }) {
 	);
 }
 
-function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
+function TextSettings({
+	cardId,
+	node,
+	fonts,
+}: {
+	cardId: string;
+	node: TextNode;
+	fonts?: Partial<Record<TextNode["fontType"], ProjectFontEntity>>;
+}) {
 	const updateNode = useEditorStore((state) => state.updateNode);
+	const fontRoles = [
+		{ value: "primary" as const, label: "Primary" },
+		{ value: "sec1" as const, label: "Secondary 1" },
+		{ value: "sec2" as const, label: "Secondary 2" },
+	];
 
 	return (
 		<>
@@ -174,16 +189,28 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 							})
 						}
 					>
-						<SelectTrigger id="node-font-role">
+						<SelectTrigger
+							id="node-font-role"
+							size="compact"
+							className="min-h-9 px-3 py-2 text-sm font-bold"
+						>
 							<span className="mono-label mr-auto text-muted-foreground">
 								Font role
 							</span>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="primary">Primary</SelectItem>
-							<SelectItem value="sec1">Secondary 1</SelectItem>
-							<SelectItem value="sec2">Secondary 2</SelectItem>
+							{fontRoles.map(({ value, label }) => (
+								<SelectItem
+									key={value}
+									value={value}
+									className="min-h-8 py-1.5 text-sm font-bold"
+								>
+									{fonts?.[value]?.family
+										? `${fonts[value].family} (${label})`
+										: label}
+								</SelectItem>
+							))}
 						</SelectContent>
 					</Select>
 				</Field>

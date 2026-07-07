@@ -18,7 +18,7 @@ app.use(
   `${API_PREFIX}/*`,
   cors({
     origin: env.TRUSTED_ORIGINS,
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
     allowMethods: ["POST", "GET", "PATCH", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,

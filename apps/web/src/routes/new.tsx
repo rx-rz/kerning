@@ -106,6 +106,11 @@ function RouteComponent() {
 
 	const uploadedFonts = fonts.filter((font) => font.source !== "google");
 	const googleFonts = fonts.filter((font) => font.source === "google");
+	const trimmedProjectName = projectName.trim();
+	const projectNameError =
+		trimmedProjectName.length < 2
+			? "Project name must be at least 2 characters."
+			: undefined;
 
 	const handleFontsChange = useCallback((nextFonts: FontFamilyMeta[]) => {
 		setFonts(mergeFontFamilies(nextFonts));
@@ -151,7 +156,7 @@ function RouteComponent() {
 
 		try {
 			const { project } = await createProject.mutateAsync({
-				name: projectName.trim() || "Untitled Project",
+				name: trimmedProjectName,
 			});
 			createdProjectId = project.id;
 			const projectFonts = await buildProjectFontInputs({
@@ -203,7 +208,7 @@ function RouteComponent() {
 		fonts,
 		navigate,
 		primaryFontId,
-		projectName,
+		trimmedProjectName,
 		queryClient,
 		secondaryFontOneId,
 		secondaryFontTwoId,
@@ -240,9 +245,10 @@ function RouteComponent() {
 			{confirm ? (
 				<ConfirmProjectView
 					projectName={projectName}
+					projectNameError={projectNameError}
 					onProjectNameChange={setProjectName}
 					previewState={previewState}
-					canCreateProject={Boolean(primaryFontId)}
+					canCreateProject={Boolean(primaryFontId) && !projectNameError}
 					isCreatingProject={isSubmittingProject}
 					onBack={handleBackToSelection}
 					onCreateProject={handleCreateProject}
@@ -400,6 +406,7 @@ function CreateProjectForm({
 
 function ConfirmProjectView({
 	projectName,
+	projectNameError,
 	onProjectNameChange,
 	previewState,
 	canCreateProject,
@@ -408,6 +415,7 @@ function ConfirmProjectView({
 	onCreateProject,
 }: {
 	projectName: string;
+	projectNameError?: string;
 	onProjectNameChange: (name: string) => void;
 	previewState: FontUploadPreviewState;
 	canCreateProject: boolean;
@@ -433,9 +441,19 @@ function ConfirmProjectView({
 						id="project-name"
 						value={projectName}
 						onChange={(event) => onProjectNameChange(event.target.value)}
-						placeholder="Untitled Project"
+						placeholder="My Project"
+						aria-invalid={Boolean(projectNameError)}
+						aria-describedby={projectNameError ? "project-name-error" : undefined}
 						className="bg-surface-paper text-lg"
 					/>
+					{projectNameError && (
+						<p
+							id="project-name-error"
+							className="mt-2 font-sans text-sm text-destructive"
+						>
+							{projectNameError}
+						</p>
+					)}
 				</div>
 
 				<FontPreviewCard state={previewState} />

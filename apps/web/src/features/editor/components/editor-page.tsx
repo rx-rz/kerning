@@ -161,7 +161,14 @@ function EditorWorkspace({
 				onOpenChange={setIsGlyphViewerOpen}
 			/>
 			{isInspectorOpen ? (
-				<EditorInspector onClose={() => setIsInspectorOpen(false)} />
+				<EditorInspector
+					onClose={() => setIsInspectorOpen(false)}
+					fonts={{
+						primary,
+						sec1: secondaryOne,
+						sec2: secondaryTwo,
+					}}
+				/>
 			) : (
 				<Button
 					type="button"
