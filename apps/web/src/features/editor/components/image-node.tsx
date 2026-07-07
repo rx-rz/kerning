@@ -86,7 +86,6 @@ export function ImageNode({
 								transformOrigin: imagePosition,
 								filter: imageFilter,
 								opacity: node.opacity,
-								mixBlendMode: node.blendMode ?? "normal",
 							}}
 							draggable={false}
 						/>

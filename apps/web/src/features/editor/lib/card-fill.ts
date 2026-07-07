@@ -11,11 +11,11 @@ import type {
 
 const DEFAULT_STOPS: GradientStop[] = [
 	{ id: "start", color: "#FFFDF8", position: 1 },
-	{ id: "end", color: "#111111", position: 100 },
+	{ id: "end", color: "#046A63", position: 100 },
 ];
 
 export const DEFAULT_PAPER_SETTINGS: PaperTextureSettings = {
-	colorFront: "#4457FD",
+	colorFront: "#046A63",
 	colorBack: "#FFFFFF",
 	contrast: 0.3,
 	roughness: 0.4,
@@ -26,8 +26,8 @@ export const DEFAULT_PAPER_SETTINGS: PaperTextureSettings = {
 };
 
 export const DEFAULT_FLUTED_GLASS_SETTINGS: FlutedGlassSettings = {
-	colorBack: "#E8EAFF",
-	colorShadow: "#2433B5",
+	colorBack: "#E6F0EF",
+	colorShadow: "#034F4A",
 	colorHighlight: "#FFFFFF",
 	size: 0.5,
 	angle: 0,
@@ -43,8 +43,8 @@ export const DEFAULT_IMAGE_SETTINGS: ImageFillSettings = {
 };
 
 export const DEFAULT_HALFTONE_SETTINGS: HalftoneTextureSettings = {
-	colorBack: "#F1F2FF",
-	colorFront: "#4457FD",
+	colorBack: "#E6F0EF",
+	colorFront: "#046A63",
 	size: 0.5,
 	radius: 1.25,
 	contrast: 0.4,
@@ -55,11 +55,11 @@ export const DEFAULT_HALFTONE_SETTINGS: HalftoneTextureSettings = {
 };
 
 export const DEFAULT_HALFTONE_CMYK_SETTINGS: HalftoneCmykTextureSettings = {
-	colorBack: "#F1F2FF",
-	colorC: "#4457FD",
-	colorM: "#7C3AED",
-	colorY: "#A5B4FC",
-	colorK: "#172066",
+	colorBack: "#E6F0EF",
+	colorC: "#046A63",
+	colorM: "#E5484D",
+	colorY: "#FED503",
+	colorK: "#141414",
 	size: 0.2,
 	contrast: 1,
 	softness: 1,

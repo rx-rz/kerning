@@ -50,7 +50,10 @@ export function ShapeGraphic({
 	node,
 	className,
 }: {
-	node: Pick<ShapeNodeData, "shapeType" | "shape" | "color">;
+	node: Pick<
+		ShapeNodeData,
+		"shapeType" | "shape" | "color" | "strokeWidth"
+	>;
 	className?: string;
 }) {
 	if (node.shapeType === "icon") {
@@ -59,7 +62,7 @@ export function ShapeGraphic({
 			<Icon
 				className={className ?? "size-full"}
 				color={node.color}
-				strokeWidth={1.8}
+				strokeWidth={node.strokeWidth}
 			/>
 		);
 	}
@@ -100,9 +103,10 @@ export function ShapeGraphic({
 	return (
 		<span className={className ?? "flex size-full items-center justify-center"}>
 			<span
-				className="block h-1.5 w-full rounded-full"
+				className="block w-full rounded-full"
 				style={{
 					backgroundColor: node.color,
+					height: node.strokeWidth,
 					transform: `rotate(${rotation}deg)`,
 				}}
 			/>

@@ -57,6 +57,7 @@ export function ProjectEditorPage({ projectId }: { projectId: string }) {
 	return (
 		<EditorWorkspace
 			projectTitle={data?.project.name}
+			projectUpdatedAt={data?.project.updatedAt}
 			onProjectTitleChange={(name) => updateProject.mutate({ name })}
 			primary={primary}
 			secondaryOne={secondaryOne}
@@ -67,12 +68,14 @@ export function ProjectEditorPage({ projectId }: { projectId: string }) {
 
 function EditorWorkspace({
 	projectTitle,
+	projectUpdatedAt,
 	onProjectTitleChange,
 	primary,
 	secondaryOne,
 	secondaryTwo,
 }: {
 	projectTitle?: string;
+	projectUpdatedAt?: string;
 	onProjectTitleChange?: (title: string) => void;
 	primary?: ProjectFontEntity;
 	secondaryOne?: ProjectFontEntity;
@@ -134,6 +137,7 @@ function EditorWorkspace({
 		>
 			<EditorCanvas
 				projectTitle={projectTitle}
+				projectUpdatedAt={projectUpdatedAt}
 				onProjectTitleChange={onProjectTitleChange}
 				onToggleInspector={() => setIsInspectorOpen((isOpen) => !isOpen)}
 				onSelectNode={() => setIsInspectorOpen(true)}
@@ -164,7 +168,7 @@ function EditorWorkspace({
 					aria-label="Open inspector"
 					variant="ghost"
 					size="icon"
-					className="fixed top-2.5 right-2.5 z-40 border border-white/60 bg-surface-glass shadow-hairline backdrop-blur-3xl"
+					className="fixed top-2.5 right-2.5 shadow-xl z-40 border border-white/60 bg-surface-glass shadow-hairline backdrop-blur-3xl"
 					onClick={() => setIsInspectorOpen(true)}
 				>
 					<PanelRightOpen />

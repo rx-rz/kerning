@@ -129,9 +129,15 @@ type BaseNode = {
 	id: string;
 	x: number;
 	y: number;
+	/** Coordinates saved independently for each card aspect ratio. */
+	positions?: Partial<Record<CardAspectRatio, NodePosition>>;
 	width: number;
 	height: number;
+	rotation?: NodeRotation;
 };
+
+export type NodePosition = { x: number; y: number };
+export type NodeRotation = number;
 
 export type TextNode = BaseNode & {
 	type: "text";
@@ -157,6 +163,7 @@ export type ImageNode = BaseNode & {
 	positionY: number;
 	effects: ImageEffects;
 	opacity: number;
+	/** @deprecated Retained only to deserialize older saved projects. */
 	blendMode?:
 		| "normal"
 		| "multiply"
@@ -182,6 +189,7 @@ export type ShapeNode = BaseNode & {
 	shapeType: "icon" | "emoji" | "line" | "rectangle" | "ellipse";
 	shape: string;
 	color: string;
+	strokeWidth: number;
 	texture?: TextureCardFill | null;
 };
 

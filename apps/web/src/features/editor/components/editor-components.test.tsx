@@ -119,13 +119,13 @@ describe("editor components", () => {
 		).toBeTruthy();
 	});
 
-	it("opens every inspector section by default without carets", () => {
+	it("renders inspector sections as static, non-collapsible regions", () => {
 		renderEditorParts();
-		const sections = Array.from(document.querySelectorAll("details"));
+		const sections = Array.from(document.querySelectorAll("section"));
 
 		expect(sections.length).toBeGreaterThan(0);
-		expect(sections.every((section) => section.open)).toBe(true);
-		expect(document.querySelector("details summary svg")).toBeNull();
+		expect(document.querySelector("details")).toBeNull();
+		expect(document.querySelector("summary")).toBeNull();
 	});
 
 	it("updates the card solid fill from the inspector", () => {
@@ -441,15 +441,15 @@ describe("editor components", () => {
 			screen.getByRole("button", { name: "Open templates for Untitled Card" }),
 		);
 		expect(screen.getByRole("heading", { name: "Templates" })).toBeTruthy();
-		fireEvent.click(screen.getByRole("button", { name: /brat/ }));
+		fireEvent.click(screen.getByRole("button", { name: /Swiss Modernism/ }));
 
 		expect(useEditorStore.getState().cards[0]).toMatchObject({
-			name: "brat",
+			name: "Swiss Modernism",
 			width: 500,
 			height: 500,
 			settings: {
 				aspectRatio: "1:1",
-				fill: { type: "image", src: expect.stringContaining("cdn.cosmos.so") },
+				fill: { type: "solid", color: "#F2F1EC" },
 			},
 		});
 	});
@@ -903,10 +903,14 @@ describe("editor components", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "Add Card" }));
 		expect(useEditorStore.getState().cards).toHaveLength(2);
-		expect(screen.getByDisplayValue("Untitled Card 2")).toBeTruthy();
+		expect(
+			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
+		).toBe("Untitled Card 2");
 
 		fireEvent.click(screen.getByRole("button", { name: "Reset" }));
-		expect(screen.getByDisplayValue("Untitled Card")).toBeTruthy();
+		expect(
+			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
+		).toBe("Untitled Card");
 	});
 
 	it("selects a card from the tick navigator", () => {
@@ -917,20 +921,28 @@ describe("editor components", () => {
 			screen.getByRole("button", { name: "Go to Untitled Card" }),
 		);
 
-		expect(screen.getByDisplayValue("Untitled Card")).toBeTruthy();
+		expect(
+			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
+		).toBe("Untitled Card");
 	});
 
 	it("moves between adjacent cards from the preview navigation", () => {
 		renderEditorParts();
 
 		fireEvent.click(screen.getByRole("button", { name: "Add Card" }));
-		expect(screen.getByDisplayValue("Untitled Card 2")).toBeTruthy();
+		expect(
+			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
+		).toBe("Untitled Card 2");
 
 		fireEvent.click(screen.getByRole("button", { name: "Previous card" }));
-		expect(screen.getByDisplayValue("Untitled Card")).toBeTruthy();
+		expect(
+			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
+		).toBe("Untitled Card");
 
 		fireEvent.click(screen.getByRole("button", { name: "Next card" }));
-		expect(screen.getByDisplayValue("Untitled Card 2")).toBeTruthy();
+		expect(
+			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
+		).toBe("Untitled Card 2");
 	});
 
 	it("edits the project title and toggles the card drag lock", () => {
@@ -946,6 +958,14 @@ describe("editor components", () => {
 		fireEvent.change(title, { target: { value: "Launch campaign" } });
 		fireEvent.blur(title);
 		expect(onProjectTitleChange).toHaveBeenCalledWith("Launch campaign");
+		expect(screen.getByText(/^Last edited /).textContent).not.toBe(
+			"Last edited —",
+		);
+
+		const cardName = screen.getByRole("textbox", { name: "Card name" });
+		fireEvent.change(cardName, { target: { value: "Front cover" } });
+		fireEvent.blur(cardName);
+		expect(useEditorStore.getState().cards[0]?.name).toBe("Front cover");
 
 		const lock = screen.getByRole("button", { name: "Lock card dragging" });
 		fireEvent.click(lock);
@@ -967,7 +987,9 @@ describe("editor components", () => {
 			deltaY: -100,
 		});
 
-		expect(screen.getByDisplayValue("Untitled Card")).toBeTruthy();
+		expect(
+			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
+		).toBe("Untitled Card");
 	});
 
 	it("zooms the canvas between fifty and one hundred fifty percent", () => {

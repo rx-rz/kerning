@@ -12,6 +12,7 @@ import {
 	getCardSizeFromAspectRatio,
 } from "#/features/editor/lib/card-size";
 import type {
+	CardAspectRatio,
 	CardFill,
 	CardSettings,
 	EditorCard,
@@ -24,10 +25,22 @@ import type {
 	TextureCardFill,
 } from "#/features/editor/types";
 
+type CardHistorySnapshot = {
+	card: EditorCard;
+	selectedNodeId: string | null;
+};
+
+type CardHistory = {
+	past: CardHistorySnapshot[];
+	future: CardHistorySnapshot[];
+	transactionStart: CardHistorySnapshot | null;
+};
+
 type EditorState = {
 	cards: EditorCard[];
 	selectedCardId: string | null;
 	selectedNodeId: string | null;
+	cardHistories: Record<string, CardHistory>;
 	selectCard: (id: string | null) => void;
 	selectNode: (cardId: string, nodeId: string) => void;
 	addCard: () => void;
@@ -44,11 +57,57 @@ type EditorState = {
 	updateNode: (cardId: string, nodeId: string, patch: EditorNodePatch) => void;
 	deleteNode: (cardId: string, nodeId: string) => void;
 	reorderNode: (cardId: string, nodeId: string, targetIndex: number) => void;
+	beginHistoryTransaction: (cardId: string) => void;
+	endHistoryTransaction: (cardId: string) => void;
+	undo: (cardId: string) => void;
+	redo: (cardId: string) => void;
 	resetEditor: () => void;
 };
 
 export const EDITOR_SESSION_STORAGE_KEY = "kerning-editor-session";
 export const NODE_CARD_INSET = 0;
+export const DEFAULT_NODE_COLOR = "#046A63";
+const HISTORY_LIMIT = 100;
+
+function cloneCard(card: EditorCard): EditorCard {
+	// Store documents are JSON-safe; JSON cloning also unwraps mutative's draft proxies.
+	return JSON.parse(JSON.stringify(card)) as EditorCard;
+}
+
+function snapshotCard(
+	state: Pick<EditorState, "cards" | "selectedCardId" | "selectedNodeId">,
+	cardId: string,
+): CardHistorySnapshot | null {
+	const card = state.cards.find(({ id }) => id === cardId);
+	if (!card) return null;
+	return {
+		card: cloneCard(card),
+		selectedNodeId:
+			state.selectedCardId === cardId ? state.selectedNodeId : null,
+	};
+}
+
+function getCardHistory(state: EditorState, cardId: string): CardHistory {
+	const existing = state.cardHistories[cardId];
+	if (existing) return existing;
+	const history = {
+		past: [],
+		future: [],
+		transactionStart: null,
+	};
+	state.cardHistories[cardId] = history;
+	return history;
+}
+
+function recordCardHistory(state: EditorState, cardId: string) {
+	const history = getCardHistory(state, cardId);
+	if (history.transactionStart) return;
+	const snapshot = snapshotCard(state, cardId);
+	if (!snapshot) return;
+	history.past.push(snapshot);
+	if (history.past.length > HISTORY_LIMIT) history.past.shift();
+	history.future = [];
+}
 
 const fallbackStorage: Storage = {
 	length: 0,
@@ -101,13 +160,15 @@ function createDefaultTextNode(card: EditorCard): TextNode {
 		y: 24,
 		width,
 		height: 58,
+		positions: { [card.settings.aspectRatio]: { x: 24, y: 24 } },
+		rotation: 0,
 		text: "Double click to start editing...",
 		fontType: "primary",
 		fontSize: 20,
 		fontWeight: 500,
 		lineHeight: 1.1,
 		letterSpacing: 0,
-		color: "#111111",
+		color: DEFAULT_NODE_COLOR,
 		textAlign: "left",
 		textCasing: "none",
 	};
@@ -123,6 +184,8 @@ function createDefaultImageNode(card: EditorCard): ImageNode {
 		y: 24,
 		width,
 		height: Math.min(160, Math.max(1, card.height - 48)),
+		positions: { [card.settings.aspectRatio]: { x: 24, y: 24 } },
+		rotation: 0,
 		src: "",
 		imageId: null,
 		alt: "",
@@ -139,7 +202,6 @@ function createDefaultImageNode(card: EditorCard): ImageNode {
 			sepia: 0,
 		},
 		opacity: 1,
-		blendMode: "normal",
 		texture: null,
 	};
 }
@@ -160,9 +222,12 @@ function createDefaultShapeNode(
 		y: 24,
 		width: shape.shapeType === "line" ? Math.min(180, card.width - 48) : size,
 		height: shape.shapeType === "line" ? 32 : size,
+		positions: { [card.settings.aspectRatio]: { x: 24, y: 24 } },
+		rotation: 0,
 		shapeType: shape.shapeType,
 		shape: shape.shape,
-		color: "#111111",
+		color: DEFAULT_NODE_COLOR,
+		strokeWidth: 1,
 		texture: null,
 	};
 }
@@ -190,7 +255,14 @@ function constrainNode(
 		card.height - NODE_CARD_INSET - height,
 	);
 
-	return { ...node, width, height, x, y };
+	return {
+		...node,
+		width,
+		height,
+		x,
+		y,
+		rotation: clamp(node.rotation ?? 0, 0, 360),
+	};
 }
 
 function normalizeCard(card: EditorCard): EditorCard {
@@ -210,42 +282,73 @@ function normalizeCard(card: EditorCard): EditorCard {
 
 	return {
 		...clampedCard,
-		nodes: clampedCard.nodes.map((node) =>
-			constrainNode(
-				node.type === "image"
-					? {
-							...node,
-							imageId: node.imageId ?? null,
-							zoom: node.zoom ?? 1,
-							blendMode: node.blendMode ?? "normal",
-							positionX: node.positionX ?? 50,
-							positionY: node.positionY ?? 50,
-							effects: {
-								brightness: node.effects?.brightness ?? 100,
-								contrast: node.effects?.contrast ?? 100,
-								saturation: node.effects?.saturation ?? 100,
-								blur: node.effects?.blur ?? 0,
-								grayscale: node.effects?.grayscale ?? 0,
-								sepia: node.effects?.sepia ?? 0,
-							},
-						}
-					: node.type === "text"
+		nodes: clampedCard.nodes
+			.map((node) =>
+				constrainNode(
+					node.type === "image"
 						? {
 								...node,
-								letterSpacing: node.letterSpacing ?? 0,
-								textAlign: node.textAlign ?? "left",
-								textCasing: node.textCasing ?? "none",
+								imageId: node.imageId ?? null,
+								zoom: node.zoom ?? 1,
+								positionX: node.positionX ?? 50,
+								positionY: node.positionY ?? 50,
+								effects: {
+									brightness: node.effects?.brightness ?? 100,
+									contrast: node.effects?.contrast ?? 100,
+									saturation: node.effects?.saturation ?? 100,
+									blur: node.effects?.blur ?? 0,
+									grayscale: node.effects?.grayscale ?? 0,
+									sepia: node.effects?.sepia ?? 0,
+								},
 							}
-						: {
-								...node,
-								shapeType: node.shapeType ?? "icon",
-								shape: node.shape ?? "circle",
-								color: node.color ?? "#111111",
-								texture: node.texture ?? null,
-							},
-				clampedCard,
-			),
-		),
+						: node.type === "text"
+							? {
+									...node,
+									letterSpacing: node.letterSpacing ?? 0,
+									textAlign: node.textAlign ?? "left",
+									textCasing: node.textCasing ?? "none",
+								}
+							: {
+									...node,
+									shapeType: node.shapeType ?? "icon",
+									shape: node.shape ?? "circle",
+									color: node.color ?? DEFAULT_NODE_COLOR,
+									strokeWidth: node.strokeWidth ?? 1,
+									texture: node.texture ?? null,
+								},
+					clampedCard,
+				),
+			)
+			.map((node) => ({
+				...node,
+				rotation: node.rotation ?? 0,
+				positions: {
+					...(node.positions ?? {}),
+					[clampedCard.settings.aspectRatio]: { x: node.x, y: node.y },
+				},
+			})),
+	};
+}
+
+function switchNodeAspectRatio(
+	node: EditorNode,
+	from: CardAspectRatio,
+	to: CardAspectRatio,
+	card: Pick<EditorCard, "width" | "height">,
+): EditorNode {
+	const positions = {
+		...(node.positions ?? {}),
+		[from]: { x: node.x, y: node.y },
+	};
+	const target = positions[to] ?? { x: node.x, y: node.y };
+	const constrained = constrainNode({ ...node, ...target, positions }, card);
+
+	return {
+		...constrained,
+		positions: {
+			...positions,
+			[to]: { x: constrained.x, y: constrained.y },
+		},
 	};
 }
 
@@ -376,6 +479,7 @@ export const useEditorStore = create<EditorState>()(
 	persist(
 		mutative((set) => ({
 			...createDefaultState(),
+			cardHistories: {},
 			selectCard: (id) => set({ selectedCardId: id, selectedNodeId: null }),
 			selectNode: (cardId, nodeId) =>
 				set({ selectedCardId: cardId, selectedNodeId: nodeId }),
@@ -410,6 +514,7 @@ export const useEditorStore = create<EditorState>()(
 					const cardIndex = state.cards.findIndex((card) => card.id === id);
 
 					if (cardIndex === -1) return;
+					recordCardHistory(state, id);
 
 					state.cards[cardIndex] = normalizeCard({
 						...state.cards[cardIndex],
@@ -423,22 +528,37 @@ export const useEditorStore = create<EditorState>()(
 					if (cardIndex === -1) return;
 
 					const card = state.cards[cardIndex];
+					recordCardHistory(state, id);
 					const settings = { ...card.settings, ...patch };
 					const size = patch.aspectRatio
 						? getCardSizeFromAspectRatio(patch.aspectRatio)
 						: {};
 
-					state.cards[cardIndex] = normalizeCard({
+					const nextCard = normalizeCard({
 						...card,
 						...size,
 						settings,
 					});
+					state.cards[cardIndex] = patch.aspectRatio
+						? {
+								...nextCard,
+								nodes: card.nodes.map((node) =>
+									switchNodeAspectRatio(
+										node,
+										card.settings.aspectRatio,
+										patch.aspectRatio as CardAspectRatio,
+										nextCard,
+									),
+								),
+							}
+						: nextCard;
 				}),
 			addTextNode: (cardId) =>
 				set((state) => {
 					const card = state.cards.find(({ id }) => id === cardId);
 
 					if (!card) return;
+					recordCardHistory(state, cardId);
 
 					const node = createDefaultTextNode(card);
 					card.nodes.push(node);
@@ -450,6 +570,7 @@ export const useEditorStore = create<EditorState>()(
 					const card = state.cards.find(({ id }) => id === cardId);
 
 					if (!card) return;
+					recordCardHistory(state, cardId);
 
 					const node = createDefaultImageNode(card);
 					card.nodes.push(node);
@@ -461,6 +582,7 @@ export const useEditorStore = create<EditorState>()(
 					const card = state.cards.find(({ id }) => id === cardId);
 
 					if (!card) return;
+					recordCardHistory(state, cardId);
 
 					const node = createDefaultShapeNode(card, shape);
 					card.nodes.push(node);
@@ -471,6 +593,7 @@ export const useEditorStore = create<EditorState>()(
 				set((state) => {
 					const cardIndex = state.cards.findIndex(({ id }) => id === cardId);
 					if (cardIndex === -1) return;
+					recordCardHistory(state, cardId);
 
 					state.cards[cardIndex] = normalizeCard({
 						...template,
@@ -487,11 +610,22 @@ export const useEditorStore = create<EditorState>()(
 						card?.nodes.findIndex(({ id }) => id === nodeId) ?? -1;
 
 					if (!card || nodeIndex === -1) return;
+					recordCardHistory(state, cardId);
 
-					card.nodes[nodeIndex] = constrainNode(
+					const updatedNode = constrainNode(
 						{ ...card.nodes[nodeIndex], ...patch } as EditorNode,
 						card,
 					);
+					card.nodes[nodeIndex] = {
+						...updatedNode,
+						positions: {
+							...updatedNode.positions,
+							[card.settings.aspectRatio]: {
+								x: updatedNode.x,
+								y: updatedNode.y,
+							},
+						},
+					};
 				}),
 			deleteNode: (cardId, nodeId) =>
 				set((state) => {
@@ -500,6 +634,7 @@ export const useEditorStore = create<EditorState>()(
 						card?.nodes.findIndex(({ id }) => id === nodeId) ?? -1;
 
 					if (!card || nodeIndex === -1) return;
+					recordCardHistory(state, cardId);
 
 					card.nodes.splice(nodeIndex, 1);
 					if (state.selectedNodeId === nodeId) state.selectedNodeId = null;
@@ -510,6 +645,7 @@ export const useEditorStore = create<EditorState>()(
 					const sourceIndex =
 						card?.nodes.findIndex(({ id }) => id === nodeId) ?? -1;
 					if (!card || sourceIndex < 0) return;
+					recordCardHistory(state, cardId);
 					const [node] = card.nodes.splice(sourceIndex, 1);
 					if (!node) return;
 					card.nodes.splice(
@@ -518,11 +654,55 @@ export const useEditorStore = create<EditorState>()(
 						node,
 					);
 				}),
-			resetEditor: () => set(createDefaultState()),
+			beginHistoryTransaction: (cardId) =>
+				set((state) => {
+					const history = getCardHistory(state, cardId);
+					if (!history.transactionStart) {
+						history.transactionStart = snapshotCard(state, cardId);
+					}
+				}),
+			endHistoryTransaction: (cardId) =>
+				set((state) => {
+					const history = getCardHistory(state, cardId);
+					const start = history.transactionStart;
+					history.transactionStart = null;
+					const current = snapshotCard(state, cardId);
+					if (!start || !current) return;
+					if (JSON.stringify(start.card) === JSON.stringify(current.card))
+						return;
+					history.past.push(start);
+					if (history.past.length > HISTORY_LIMIT) history.past.shift();
+					history.future = [];
+				}),
+			undo: (cardId) =>
+				set((state) => {
+					const history = getCardHistory(state, cardId);
+					const previous = history.past.pop();
+					const current = snapshotCard(state, cardId);
+					if (!previous || !current) return;
+					history.future.push(current);
+					const index = state.cards.findIndex(({ id }) => id === cardId);
+					state.cards[index] = previous.card;
+					state.selectedCardId = cardId;
+					state.selectedNodeId = previous.selectedNodeId;
+				}),
+			redo: (cardId) =>
+				set((state) => {
+					const history = getCardHistory(state, cardId);
+					const next = history.future.pop();
+					const current = snapshotCard(state, cardId);
+					if (!next || !current) return;
+					history.past.push(current);
+					const index = state.cards.findIndex(({ id }) => id === cardId);
+					state.cards[index] = next.card;
+					state.selectedCardId = cardId;
+					state.selectedNodeId = next.selectedNodeId;
+				}),
+			resetEditor: () => set({ ...createDefaultState(), cardHistories: {} }),
 		})),
 		{
 			name: EDITOR_SESSION_STORAGE_KEY,
-			version: 6,
+			version: 7,
 			storage: createJSONStorage(() =>
 				typeof window === "undefined" ? fallbackStorage : window.sessionStorage,
 			),

@@ -7,6 +7,11 @@ import { ColorField } from "#/components/ui/color-field";
 import { FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "#/components/ui/popover";
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -14,11 +19,6 @@ import {
 	SelectValue,
 } from "#/components/ui/select";
 import { Slider } from "#/components/ui/slider";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "#/components/ui/popover";
 import { deleteEditorImage, replaceEditorImage } from "#/db/image-db";
 import {
 	createDefaultFill,
@@ -62,9 +62,9 @@ export function CardFillInspector({
 						type="button"
 						className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-hairline bg-white px-3 text-xs"
 					>
-						<FillSwatch type={fill.type} />
-						<span className="font-semibold">Fill</span>
-						<span className="ml-auto text-muted-foreground">
+						<span className="mono-label text-muted-foreground">Fill</span>
+						<span className="ml-auto flex items-center gap-2 font-bold text-foreground">
+							<FillSwatch type={fill.type} />
 							{FILL_TYPES.find(({ value }) => value === fill.type)?.label}
 						</span>
 						<ChevronDown className="size-3" />
@@ -182,7 +182,7 @@ function GradientInspector({
 								...fill,
 								stops: [
 									...fill.stops,
-									{ id: createId(), color: "#888888", position: 50 },
+									{ id: createId(), color: "#046A63", position: 50 },
 								],
 							})
 						}
@@ -250,20 +250,22 @@ export function CardTextureInspector({
 				<PopoverTrigger asChild>
 					<button
 						type="button"
-						className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-hairline bg-white px-3 text-xs"
+						className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-hairline bg-white px-4 font-sans text-xs font-bold"
 					>
-						<TextureSwatch texture={selectedTexture} />
-						<span className="font-semibold">Texture</span>
-						<span className="ml-auto capitalize text-muted-foreground">
-							{TEXTURES.find(({ value }) => value === selectedTexture)?.label ??
-								"None"}
+						<span className="mono-label text-muted-foreground">Texture</span>
+						<span className="ml-auto flex items-center gap-4 capitalize">
+							<TextureSwatch texture={selectedTexture} />
+							<span>
+								{TEXTURES.find(({ value }) => value === selectedTexture)
+									?.label ?? "None"}
+							</span>
 						</span>
 						<ChevronDown className="size-3" />
 					</button>
 				</PopoverTrigger>
 				<PopoverContent
 					align="end"
-					className="w-[var(--radix-popover-trigger-width)]"
+					className="w-(--radix-popover-trigger-width)"
 				>
 					<fieldset className="grid grid-cols-3 gap-1.5">
 						<legend className="sr-only">Texture</legend>
@@ -320,13 +322,13 @@ function TextureSwatch({
 }) {
 	const background =
 		texture === "paper"
-			? "repeating-radial-gradient(circle at 30% 40%,#4457fd 0 1px,#f1f2ff 1px 4px)"
+			? "repeating-radial-gradient(circle at 30% 40%,#046a63 0 1px,#e6f0ef 1px 4px)"
 			: texture === "fluted-glass"
-				? "repeating-linear-gradient(90deg,#c7ccff 0 4px,#fff 4px 7px,#8792ff 7px 9px)"
+				? "repeating-linear-gradient(90deg,#b4d1cf 0 4px,#fff 4px 7px,#046a63 7px 9px)"
 				: texture === "halftone"
-					? "radial-gradient(circle,#4457fd 1px,transparent 1.5px) 0 0/6px 6px,#f1f2ff"
+					? "radial-gradient(circle,#046a63 1px,transparent 1.5px) 0 0/6px 6px,#e6f0ef"
 					: texture === "halftone-cmyk"
-						? "radial-gradient(circle at 35% 35%,#4457fd 0 1px,transparent 2px),radial-gradient(circle at 65% 65%,#7c3aed 0 1px,transparent 2px),#c7ccff"
+						? "radial-gradient(circle at 35% 35%,#046a63 0 1px,transparent 2px),radial-gradient(circle at 65% 65%,#fed503 0 1px,transparent 2px),#b4d1cf"
 						: "linear-gradient(135deg,#fff 45%,#d7dbe0 45% 55%,#fff 55%)";
 
 	return (
@@ -768,7 +770,9 @@ function OptionField({
 	return (
 		<Select value={value} onValueChange={onChange}>
 			<SelectTrigger className="w-full">
-				<span className="mr-auto text-xs">{label}</span>
+				<span className="mono-label mr-auto text-muted-foreground">
+					{label}
+				</span>
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent align="end">
@@ -793,7 +797,7 @@ function ToggleField({
 }) {
 	return (
 		<label className="flex min-h-12 items-center justify-between rounded-lg bg-white px-3 text-xs font-semibold shadow-[inset_0_0_0_1px_var(--line-hair)]">
-			<span>{label}</span>
+			<span className="mono-label text-muted-foreground">{label}</span>
 			<input
 				type="checkbox"
 				checked={checked}

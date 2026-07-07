@@ -11,9 +11,16 @@ import {
 } from "#/features/editor/lib/editor-templates";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 import type { EditorNode } from "#/features/editor/types";
-import { cn } from "#/lib/utils";
 
 type TemplateFilter = "All" | EditorTemplate["category"];
+const TEMPLATE_FILTERS: TemplateFilter[] = [
+	"All",
+	"Album covers",
+	"Movie posters",
+	"Business cards",
+	"Typography specimens",
+	"Pitch decks",
+];
 
 export function TemplateSidebar({
 	cardId,
@@ -53,8 +60,8 @@ export function TemplateSidebar({
 					<X />
 				</Button>
 			</header>
-			<div className="flex gap-1 border-b border-hairline p-3">
-				{(["All", "Album covers", "Movie posters"] as const).map((item) => (
+			<div className="flex flex-wrap gap-1 border-b border-hairline p-3">
+				{TEMPLATE_FILTERS.map((item) => (
 					<button
 						key={item}
 						type="button"
@@ -97,16 +104,23 @@ export function TemplateSidebar({
 
 function TemplatePreview({ template }: { template: EditorTemplate }) {
 	const { card } = template;
-	const scale = template.aspectRatio === "1:1" ? 0.28 : 0.275;
+	const isSquare = template.aspectRatio === "1:1";
+	const isLandscape =
+		template.aspectRatio === "16:9" || template.aspectRatio === "business-card";
+	const previewWidth = isLandscape ? 160 : isSquare ? 140 : template.aspectRatio === "4:5" ? 112 : 99;
+	const previewHeight = Math.round((previewWidth * card.height) / card.width);
+	const scale = previewWidth / card.width;
 
 	return (
 		<span
-			className={cn(
-				"relative mx-auto block overflow-hidden rounded-md border border-black/10 shadow-sm",
-				template.aspectRatio === "1:1" ? "size-[140px]" : "h-44 w-[99px]",
-			)}
+			className="relative mx-auto block overflow-hidden rounded-md border border-black/10 shadow-sm"
 			style={{
-				backgroundColor: "#FFFFFF",
+				backgroundColor:
+					card.settings.fill.type === "solid"
+						? card.settings.fill.color
+						: "#FFFFFF",
+				width: previewWidth,
+				height: previewHeight,
 			}}
 		>
 			{card.settings.fill.type === "image" && card.settings.fill.src ? (
@@ -189,7 +203,6 @@ function TemplateNodePreview({ node }: { node: EditorNode }) {
 					objectFit: node.objectFit,
 					objectPosition: `${node.positionX}% ${node.positionY}%`,
 					opacity: node.opacity,
-					mixBlendMode: node.blendMode ?? "normal",
 					filter: `brightness(${node.effects.brightness}%) contrast(${node.effects.contrast}%) saturate(${node.effects.saturation}%) grayscale(${node.effects.grayscale}%) sepia(${node.effects.sepia}%)`,
 				}}
 			/>

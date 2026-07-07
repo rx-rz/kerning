@@ -1,11 +1,15 @@
 import { X } from "lucide-react";
 import type { MouseEvent, PointerEvent } from "react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import { deleteEditorImage } from "#/db/image-db";
 import { ImageNode } from "#/features/editor/components/image-node";
 import { ShapeNode } from "#/features/editor/components/shape-node";
 import { TextNode } from "#/features/editor/components/text-node";
+import {
+	type SmartGuide,
+	SmartGuideEngine,
+} from "#/features/editor/lib/smart-guide-engine";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 import type { EditorNode as EditorNodeData } from "#/features/editor/types";
 import { cn } from "#/lib/utils";
@@ -16,9 +20,11 @@ type EditorNodeProps = {
 	cardHeight: number;
 	zoom: number;
 	node: EditorNodeData;
+	nodes: readonly EditorNodeData[];
 	isSelected: boolean;
 	layerIndex: number;
 	onSelect: (nodeId: string) => void;
+	onGuidesChange: (guides: SmartGuide[]) => void;
 };
 
 export function EditorNode({
@@ -27,16 +33,52 @@ export function EditorNode({
 	cardHeight,
 	zoom,
 	node,
+	nodes,
 	isSelected,
 	layerIndex,
 	onSelect,
+	onGuidesChange,
 }: EditorNodeProps) {
 	const nodeRef = useRef<HTMLDivElement>(null);
+	const frameRef = useRef<number | null>(null);
+	const pendingFrameRef = useRef<(() => void) | null>(null);
 	const selectNode = () => onSelect(node.id);
+
+	useEffect(
+		() => () => {
+			if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+		},
+		[],
+	);
+
+	function createGuideEngine() {
+		return new SmartGuideEngine(nodes.filter(({ id }) => id !== node.id));
+	}
+
+	function scheduleFrame(run: () => void) {
+		pendingFrameRef.current = run;
+		if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+		frameRef.current = requestAnimationFrame(() => {
+			frameRef.current = null;
+			const pending = pendingFrameRef.current;
+			pendingFrameRef.current = null;
+			pending?.();
+		});
+	}
+
+	function finishInteraction() {
+		if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+		frameRef.current = null;
+		const pending = pendingFrameRef.current;
+		pendingFrameRef.current = null;
+		pending?.();
+		onGuidesChange([]);
+	}
 
 	function startDragging(event: PointerEvent<HTMLElement>) {
 		event.stopPropagation();
 		selectNode();
+		useEditorStore.getState().beginHistoryTransaction(cardId);
 
 		const origin = {
 			pointerX: event.clientX,
@@ -45,18 +87,31 @@ export function EditorNode({
 			y: node.y,
 		};
 		const target = event.currentTarget;
+		const guideEngine = createGuideEngine();
 		target.setPointerCapture(event.pointerId);
 
 		function moveNode(moveEvent: globalThis.PointerEvent) {
-			const round =
-				node.type === "image" ? Math.ceil : (value: number) => value;
-			useEditorStore.getState().updateNode(cardId, node.id, {
-				x: round(origin.x + (moveEvent.clientX - origin.pointerX) / zoom),
-				y: round(origin.y + (moveEvent.clientY - origin.pointerY) / zoom),
+			const clientX = moveEvent.clientX;
+			const clientY = moveEvent.clientY;
+			scheduleFrame(() => {
+				const result = guideEngine.compute({
+					...node,
+					x: origin.x + (clientX - origin.pointerX) / zoom,
+					y: origin.y + (clientY - origin.pointerY) / zoom,
+				});
+				const round =
+					node.type === "image" ? Math.ceil : (value: number) => value;
+				useEditorStore.getState().updateNode(cardId, node.id, {
+					x: round(result.bounds.x),
+					y: round(result.bounds.y),
+				});
+				onGuidesChange(result.guides);
 			});
 		}
 
 		function stopDragging() {
+			finishInteraction();
+			useEditorStore.getState().endHistoryTransaction(cardId);
 			target.removeEventListener("pointermove", moveNode);
 			target.removeEventListener("pointerup", stopDragging);
 			target.removeEventListener("pointercancel", stopDragging);
@@ -76,6 +131,7 @@ export function EditorNode({
 		event.preventDefault();
 		event.stopPropagation();
 		selectNode();
+		useEditorStore.getState().beginHistoryTransaction(cardId);
 
 		const measuredWidth = nodeRef.current?.getBoundingClientRect().width;
 		const origin = {
@@ -88,44 +144,73 @@ export function EditorNode({
 			y: node.y,
 		};
 		const target = event.currentTarget;
+		const guideEngine = createGuideEngine();
 		target.setPointerCapture(event.pointerId);
 
 		function resizeNode(moveEvent: globalThis.PointerEvent) {
-			const deltaX = (moveEvent.clientX - origin.pointerX) / zoom;
-			const deltaY = (moveEvent.clientY - origin.pointerY) / zoom;
-			const round =
-				node.type === "image" ? Math.ceil : (value: number) => value;
+			const clientX = moveEvent.clientX;
+			const clientY = moveEvent.clientY;
+			scheduleFrame(() => {
+				const deltaX = (clientX - origin.pointerX) / zoom;
+				const deltaY = (clientY - origin.pointerY) / zoom;
+				const round =
+					node.type === "image" ? Math.ceil : (value: number) => value;
 
-			const movesLeft = direction.includes("w");
-			const movesRight = direction.includes("e");
-			const movesTop = direction.includes("n");
-			const movesBottom = direction.includes("s");
-			const width = movesLeft
-				? Math.min(origin.x + origin.width, Math.max(24, origin.width - deltaX))
-				: movesRight
-					? Math.min(cardWidth - origin.x, Math.max(24, origin.width + deltaX))
-					: origin.width;
-			const height = movesTop
-				? Math.min(
-						origin.y + origin.height,
-						Math.max(24, origin.height - deltaY),
-					)
-				: movesBottom
+				const movesLeft = direction.includes("w");
+				const movesRight = direction.includes("e");
+				const movesTop = direction.includes("n");
+				const movesBottom = direction.includes("s");
+				const width = movesLeft
 					? Math.min(
-							cardHeight - origin.y,
-							Math.max(24, origin.height + deltaY),
+							origin.x + origin.width,
+							Math.max(24, origin.width - deltaX),
 						)
-					: origin.height;
+					: movesRight
+						? Math.min(
+								cardWidth - origin.x,
+								Math.max(24, origin.width + deltaX),
+							)
+						: origin.width;
+				const height = movesTop
+					? Math.min(
+							origin.y + origin.height,
+							Math.max(24, origin.height - deltaY),
+						)
+					: movesBottom
+						? Math.min(
+								cardHeight - origin.y,
+								Math.max(24, origin.height + deltaY),
+							)
+						: origin.height;
 
-			useEditorStore.getState().updateNode(cardId, node.id, {
-				width: round(width),
-				height: round(height),
-				x: movesLeft ? round(origin.x + origin.width - width) : origin.x,
-				y: movesTop ? round(origin.y + origin.height - height) : origin.y,
+				const result = guideEngine.compute(
+					{
+						id: node.id,
+						width,
+						height,
+						x: movesLeft ? origin.x + origin.width - width : origin.x,
+						y: movesTop ? origin.y + origin.height - height : origin.y,
+					},
+					{
+						left: movesLeft || undefined,
+						right: movesRight || undefined,
+						top: movesTop || undefined,
+						bottom: movesBottom || undefined,
+					},
+				);
+				useEditorStore.getState().updateNode(cardId, node.id, {
+					width: round(result.bounds.width),
+					height: round(result.bounds.height),
+					x: round(result.bounds.x),
+					y: round(result.bounds.y),
+				});
+				onGuidesChange(result.guides);
 			});
 		}
 
 		function stopResizing() {
+			finishInteraction();
+			useEditorStore.getState().endHistoryTransaction(cardId);
 			target.removeEventListener("pointermove", resizeNode);
 			target.removeEventListener("pointerup", stopResizing);
 			target.removeEventListener("pointercancel", stopResizing);
@@ -140,28 +225,35 @@ export function EditorNode({
 		event.preventDefault();
 		event.stopPropagation();
 		selectNode();
+		useEditorStore.getState().beginHistoryTransaction(cardId);
 
 		const origin = {
 			pointerX: event.clientX,
 			width: node.width,
 		};
 		const target = event.currentTarget;
+		const guideEngine = createGuideEngine();
 		target.setPointerCapture(event.pointerId);
 
 		function resizeWidth(moveEvent: globalThis.PointerEvent) {
-			const maximumWidth = cardWidth - node.x;
-			useEditorStore.getState().updateNode(cardId, node.id, {
-				width: Math.min(
+			const clientX = moveEvent.clientX;
+			scheduleFrame(() => {
+				const maximumWidth = cardWidth - node.x;
+				const width = Math.min(
 					maximumWidth,
-					Math.max(
-						24,
-						origin.width + (moveEvent.clientX - origin.pointerX) / zoom,
-					),
-				),
+					Math.max(24, origin.width + (clientX - origin.pointerX) / zoom),
+				);
+				const result = guideEngine.compute({ ...node, width }, { right: true });
+				useEditorStore
+					.getState()
+					.updateNode(cardId, node.id, { width: result.bounds.width });
+				onGuidesChange(result.guides);
 			});
 		}
 
 		function stopWidthResizing() {
+			finishInteraction();
+			useEditorStore.getState().endHistoryTransaction(cardId);
 			target.removeEventListener("pointermove", resizeWidth);
 			target.removeEventListener("pointerup", stopWidthResizing);
 			target.removeEventListener("pointercancel", stopWidthResizing);
@@ -196,6 +288,7 @@ export function EditorNode({
 				top: node.y,
 				width: node.width,
 				height: node.height,
+				transform: `rotate(${node.rotation ?? 0}deg)`,
 				zIndex: (layerIndex + 1) * 5,
 			}}
 		>

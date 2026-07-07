@@ -32,7 +32,10 @@ export function ColorField({
 	return (
 		<Field className={cn("space-y-0", className)}>
 			<div className="flex min-h-12 items-center justify-between gap-3 rounded-lg bg-white px-4 shadow-[inset_0_0_0_1px_var(--line-hair)] transition-shadow focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_22%,transparent),inset_0_0_0_1px_var(--ring)]">
-				<FieldLabel htmlFor={id} className={hideLabel ? "sr-only" : "shrink-0"}>
+				<FieldLabel
+					htmlFor={id}
+					className={hideLabel ? "sr-only" : "shrink-0 text-muted-foreground"}
+				>
 					{label}
 				</FieldLabel>
 				<div className="flex min-w-0 items-center gap-2">
@@ -56,7 +59,7 @@ export function ColorField({
 						id={id}
 						aria-label={`${ariaLabel} hex code`}
 						aria-invalid={!isDraftValid}
-						className="w-[7ch] min-w-0 bg-transparent text-right font-mono text-xs font-semibold tracking-[.03em] outline-none"
+						className="w-[9ch] shrink-0 bg-transparent text-right font-mono text-xs font-semibold tracking-[.03em] outline-none"
 						inputMode="text"
 						maxLength={7}
 						spellCheck={false}

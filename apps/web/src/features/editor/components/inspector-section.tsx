@@ -7,21 +7,19 @@ export function InspectorSection({
 }: {
 	title: string;
 	children: React.ReactNode;
-	defaultOpen?: boolean;
 	className?: string;
 }) {
 	return (
-		<details
+		<section
 			className={cn(
-				"group rounded-xl border border-hairline bg-surface-wash",
+				"rounded-xl border border-hairline bg-surface-wash",
 				className,
 			)}
-			open
 		>
-			<summary className="flex min-h-12 cursor-pointer list-none items-center px-4 text-xs font-semibold">
+			<h3 className="flex items-center px-3 py-2.5 text-xs font-semibold">
 				{title}
-			</summary>
-			<div className="space-y-3 border-t border-hairline p-3">{children}</div>
-		</details>
+			</h3>
+			<div className="space-y-3 px-3 pb-3">{children}</div>
+		</section>
 	);
 }

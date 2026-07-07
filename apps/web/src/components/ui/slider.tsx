@@ -59,6 +59,7 @@ function Slider({
 
 	const values = value ?? uncontrolledValue;
 	const primaryValue = values[0] ?? min;
+	const effectiveStep = max >= 100 ? 1 : step;
 	const canEdit = editableValue && values.length === 1 && !disabled;
 	const canSnap =
 		snapToDeciles &&
@@ -102,7 +103,8 @@ function Slider({
 		const ratio = clamp((event.clientX - bounds.left) / bounds.width, 0, 1);
 		const decile = Math.round(ratio * 10) / 10;
 		const snappedValue = min + decile * (max - min);
-		const steppedValue = min + Math.round((snappedValue - min) / step) * step;
+		const steppedValue =
+			min + Math.round((snappedValue - min) / effectiveStep) * effectiveStep;
 
 		setIsSnapping(true);
 		updateValue([clamp(steppedValue, min, max)]);
@@ -137,7 +139,7 @@ function Slider({
 				value={values}
 				min={min}
 				max={max}
-				step={step}
+				step={effectiveStep}
 				orientation={orientation}
 				disabled={disabled}
 				aria-label={
@@ -166,7 +168,7 @@ function Slider({
 					<SliderPrimitive.Range
 						data-slot="slider-range"
 						className={cn(
-							"absolute h-full bg-primary/15 data-[orientation=vertical]:w-full",
+							"absolute h-full bg-primary/25 data-[orientation=vertical]:w-full",
 							"group-data-[snapping=true]/slider:transition-[width,height] group-data-[snapping=true]/slider:duration-350 group-data-[snapping=true]/slider:ease-[cubic-bezier(.2,.8,.2,1)]",
 						)}
 					/>
@@ -211,7 +213,9 @@ function Slider({
 
 			{label || values.length === 1 ? (
 				<div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between gap-4 px-4 text-sm font-semibold text-foreground group-data-[orientation=vertical]/slider:hidden">
-					<span className="min-w-0 truncate">{label}</span>
+					<span className="mono-label min-w-0 truncate text-muted-foreground">
+						{label}
+					</span>
 
 					{values.length === 1 ? (
 						isEditing ? (
@@ -231,7 +235,7 @@ function Slider({
 									type="number"
 									min={min}
 									max={max}
-									step={step}
+									step={effectiveStep}
 									defaultValue={primaryValue}
 									aria-label={`Set ${typeof label === "string" ? label : "slider"} value`}
 									className="h-7 w-14 rounded-md border-0 bg-foreground/5 px-1.5 text-right font-mono text-xs font-semibold tabular-nums outline-none transition-colors hover:bg-foreground/8 focus:bg-foreground/10"

@@ -11,7 +11,9 @@ import { CardImageFill } from "#/features/editor/components/card-image-fill";
 import { EditorNode } from "#/features/editor/components/editor-node";
 import { LayerList } from "#/features/editor/components/layer-list";
 import { ShapePicker } from "#/features/editor/components/shape-picker";
+import { SmartGuideOverlay } from "#/features/editor/components/smart-guide-overlay";
 import { getCardFillStyle } from "#/features/editor/lib/card-fill";
+import type { SmartGuide } from "#/features/editor/lib/smart-guide-engine";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 import type { EditorCard as EditorCardData } from "#/features/editor/types";
 import { cn } from "#/lib/utils";
@@ -49,6 +51,7 @@ export function EditorCard({
 	const addImageNode = useEditorStore((state) => state.addImageNode);
 	const selectNode = useEditorStore((state) => state.selectNode);
 	const [layersOpen, setLayersOpen] = useState(false);
+	const [smartGuides, setSmartGuides] = useState<SmartGuide[]>([]);
 	const handleSelectNode = (nodeId: string) => {
 		selectNode(card.id, nodeId);
 		onSelectNode?.();
@@ -108,44 +111,47 @@ export function EditorCard({
 						cardHeight={card.height}
 						zoom={zoom}
 						node={node}
+						nodes={card.nodes}
 						isSelected={node.id === selectedNodeId}
 						layerIndex={index}
 						onSelect={handleSelectNode}
+						onGuidesChange={setSmartGuides}
 					/>
 				))}
+				<SmartGuideOverlay guides={smartGuides} />
 			</div>
 			{isSelected ? (
-				<div className="absolute -top-2 left-2 z-30 flex -translate-y-full items-center gap-1">
-					<span className="pointer-events-none rounded-md bg-primary px-2 py-1 font-mono text-[10px] font-semibold tracking-[0.04em] text-primary-foreground shadow-sm">
-						{card.name}
-					</span>
+				<div className="card-control-tray absolute -top-3 left-0 z-30 -translate-y-full">
 					<button
 						type="button"
 						aria-label={`Add text to ${card.name}`}
-						className="flex h-6 items-center gap-1 rounded-md bg-primary px-2 text-[10px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/80"
+						className="card-control card-control-icon"
+						data-tooltip="Add text"
 						onClick={(event) => {
 							event.stopPropagation();
 							addTextNode(card.id);
 						}}
 					>
-						<Type className="size-3" /> Text
+						<Type className="size-3" />
 					</button>
 					<button
 						type="button"
 						aria-label={`Add image to ${card.name}`}
-						className="flex h-6 items-center gap-1 rounded-md bg-primary px-2 text-[10px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/80"
+						className="card-control card-control-icon"
+						data-tooltip="Add image"
 						onClick={(event) => {
 							event.stopPropagation();
 							addImageNode(card.id);
 						}}
 					>
-						<ImagePlus className="size-3" /> Image
+						<ImagePlus className="size-3" />
 					</button>
 					<ShapePicker cardId={card.id} cardName={card.name} />
 					<button
 						type="button"
 						aria-label={`Open templates for ${card.name}`}
-						className="flex h-6 items-center gap-1 rounded-md bg-primary px-2 text-[10px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/80"
+						className="card-control card-control-icon"
+						data-tooltip="Templates"
 						onClick={(event) => {
 							event.stopPropagation();
 							onOpenTemplates?.(card.id);
@@ -156,7 +162,8 @@ export function EditorCard({
 					<button
 						type="button"
 						aria-label={`Toggle settings for ${card.name}`}
-						className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+						className="card-control card-control-icon"
+						data-tooltip="Card settings"
 						onClick={(event) => {
 							event.stopPropagation();
 							onToggleSettings?.();
@@ -168,7 +175,8 @@ export function EditorCard({
 						<button
 							type="button"
 							aria-label={`Delete ${card.name}`}
-							className="flex size-6 items-center justify-center rounded-md bg-red-500 text-white shadow-sm transition-colors hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+							className="card-control card-control-icon card-control-danger"
+							data-tooltip="Delete card"
 							onClick={(event) => {
 								event.stopPropagation();
 								onDelete(card.id);
@@ -184,7 +192,8 @@ export function EditorCard({
 					type="button"
 					aria-label={`Toggle layers for ${card.name}`}
 					aria-expanded={layersOpen}
-					className="absolute top-full left-2 z-30 mt-2 flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/80"
+					className="card-control card-control-icon absolute top-full left-0 z-30 mt-3"
+					data-tooltip="Layers"
 					onClick={(event) => {
 						event.stopPropagation();
 						setLayersOpen((open) => !open);

@@ -5,9 +5,9 @@ import {
 	getCardFillStyle,
 } from "#/features/editor/lib/card-fill";
 import { getCardSizeFromAspectRatio } from "#/features/editor/lib/card-size";
-import { useEditorStore } from "#/features/editor/store/editor-store";
 import { EDITOR_TEMPLATES } from "#/features/editor/lib/editor-templates";
 import { SHAPE_LIBRARY } from "#/features/editor/lib/shape-library";
+import { useEditorStore } from "#/features/editor/store/editor-store";
 import type { CardAspectRatio, EditorCard } from "#/features/editor/types";
 
 function getCardAt(cards: EditorCard[], index: number) {
@@ -39,11 +39,11 @@ describe("card fills", () => {
 		const radial = createDefaultFill("radial-gradient");
 
 		expect(getCardFillStyle(linear)).toEqual({
-			backgroundImage: "linear-gradient(135deg, #FFFDF8 1%, #111111 100%)",
+			backgroundImage: "linear-gradient(135deg, #FFFDF8 1%, #046A63 100%)",
 		});
 		expect(getCardFillStyle(radial)).toEqual({
 			backgroundImage:
-				"radial-gradient(circle at 50% 50%, #FFFDF8 1%, #111111 100%)",
+				"radial-gradient(circle at 50% 50%, #FFFDF8 1%, #046A63 100%)",
 		});
 	});
 
@@ -109,6 +109,7 @@ describe("editor store", () => {
 		expect(cards[0]?.nodes).toHaveLength(2);
 		expect(cards[0]?.nodes[0]).toMatchObject({
 			type: "text",
+			color: "#046A63",
 			fontType: "primary",
 			fontSize: 20,
 			lineHeight: 1.1,
@@ -122,7 +123,6 @@ describe("editor store", () => {
 			type: "image",
 			width: 220,
 			imageId: null,
-			blendMode: "normal",
 			zoom: 1,
 			positionX: 50,
 			positionY: 50,
@@ -155,7 +155,8 @@ describe("editor store", () => {
 		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
 			type: "shape",
 			shapeType: "ellipse",
-			color: "#111111",
+			color: "#046A63",
+			strokeWidth: 1,
 		});
 	});
 
@@ -167,36 +168,109 @@ describe("editor store", () => {
 		useEditorStore.getState().applyTemplate(card.id, album.card);
 		const templatedCard = getCardAt(useEditorStore.getState().cards, 0);
 
-		expect(EDITOR_TEMPLATES).toHaveLength(40);
+		expect(EDITOR_TEMPLATES).toHaveLength(120);
 		expect(
 			EDITOR_TEMPLATES.filter(({ category }) => category === "Album covers"),
 		).toHaveLength(20);
 		expect(
 			EDITOR_TEMPLATES.filter(({ category }) => category === "Movie posters"),
+		).toHaveLength(30);
+		expect(
+			EDITOR_TEMPLATES.filter(({ category }) => category === "Business cards"),
 		).toHaveLength(20);
 		expect(
-			EDITOR_TEMPLATES.every(
-				({ card }) =>
-					card.settings.fill.type === "image" &&
-					card.nodes.some(({ type }) => type === "image"),
+			EDITOR_TEMPLATES.filter(({ category }) => category === "Pitch decks"),
+		).toHaveLength(30);
+		expect(
+			EDITOR_TEMPLATES.filter(
+				({ category }) => category === "Typography specimens",
 			),
+		).toHaveLength(20);
+		const refreshedTemplates = EDITOR_TEMPLATES.filter(
+			({ category }) =>
+				category !== "Pitch decks" && category !== "Movie posters",
+		);
+		expect(
+			refreshedTemplates.every(
+				({ card }) => card.settings.fill.type === "solid",
+			),
+		).toBe(true);
+		expect(
+			refreshedTemplates.every(({ card }) =>
+				card.nodes.every(
+					(node) =>
+						Number.isInteger(node.x) &&
+						Number.isInteger(node.y) &&
+						Number.isInteger(node.width) &&
+						Number.isInteger(node.height),
+				),
+			),
+		).toBe(true);
+		expect(
+			refreshedTemplates.every(({ card }) =>
+				card.nodes.every(
+					(node) =>
+						node.type !== "shape" ||
+						node.width < card.width ||
+						node.height < card.height,
+				),
+			),
+		).toBe(true);
+		expect(
+			EDITOR_TEMPLATES.filter(
+				({ category }) => category === "Business cards",
+			).every(
+				({ aspectRatio, card }) =>
+					aspectRatio === "business-card" &&
+					card.width === 560 &&
+					card.height === 320,
+			),
+		).toBe(true);
+		expect(
+			EDITOR_TEMPLATES.filter(
+				({ category }) => category === "Business cards",
+			).filter(({ card }) => card.nodes.some(({ type }) => type === "image")),
+		).toHaveLength(7);
+		expect(
+			EDITOR_TEMPLATES.filter(
+				({ category }) => category === "Pitch decks",
+			).every(
+				({ aspectRatio, card }) =>
+					aspectRatio === "16:9" && card.width === 640 && card.height === 360,
+			),
+		).toBe(true);
+		const typographyCards = EDITOR_TEMPLATES.filter(
+			({ category }) => category === "Typography specimens",
+		);
+		expect(typographyCards).toHaveLength(20);
+		expect(
+			typographyCards.every(
+				({ card }) =>
+					card.settings.fill.type === "solid" &&
+					card.settings.aspectRatio === "4:5",
+			),
+		).toBe(true);
+		expect(
+			EDITOR_TEMPLATES.filter(
+				({ category }) => category === "Pitch decks",
+			).every(({ card }) => card.nodes.some(({ type }) => type === "image")),
 		).toBe(true);
 		expect(templatedCard).toMatchObject({
 			id: card.id,
-			name: "brat",
+			name: "Swiss Modernism",
 			width: 500,
 			height: 500,
 			settings: {
 				aspectRatio: "1:1",
-				fill: { type: "image", src: expect.stringContaining("cdn.cosmos.so") },
+				fill: { type: "solid", color: "#F2F1EC" },
 			},
 		});
-		expect(templatedCard.nodes.length).toBeGreaterThanOrEqual(5);
+		expect(templatedCard.nodes.length).toBeGreaterThanOrEqual(3);
 		expect(
 			templatedCard.nodes.find(({ type }) => type === "text"),
 		).toMatchObject({
 			type: "text",
-			text: "brat",
+			text: "CONCRETE / AIR",
 		});
 		expect(templatedCard.nodes[0]?.id).not.toBe(album.card.nodes[0]?.id);
 	});
@@ -297,6 +371,82 @@ describe("editor store", () => {
 			height: 600,
 			settings: { aspectRatio: "4:5" },
 		});
+	});
+
+	it("keeps independent node coordinates for each aspect ratio", () => {
+		const card = getCardAt(useEditorStore.getState().cards, 0);
+		useEditorStore.getState().addTextNode(card.id);
+		const nodeId = useEditorStore.getState().cards[0]?.nodes[0]?.id;
+		if (!nodeId) throw new Error("Expected a text node");
+
+		useEditorStore.getState().updateNode(card.id, nodeId, { x: 300, y: 200 });
+		useEditorStore
+			.getState()
+			.updateCardSettings(card.id, { aspectRatio: "9:16" });
+		useEditorStore.getState().updateNode(card.id, nodeId, { x: 80, y: 400 });
+		useEditorStore
+			.getState()
+			.updateCardSettings(card.id, { aspectRatio: "business-card" });
+
+		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
+			x: 300,
+			y: 200,
+			positions: {
+				"business-card": { x: 300, y: 200 },
+				"9:16": { x: 80, y: 400 },
+			},
+		});
+	});
+
+	it("stores node rotation and undoes and redoes changes per card", () => {
+		const firstCard = getCardAt(useEditorStore.getState().cards, 0);
+		useEditorStore.getState().addTextNode(firstCard.id);
+		const nodeId = useEditorStore.getState().cards[0]?.nodes[0]?.id;
+		if (!nodeId) throw new Error("Expected a text node");
+		useEditorStore
+			.getState()
+			.updateNode(firstCard.id, nodeId, { rotation: 90 });
+
+		useEditorStore.getState().addCard();
+		const secondCard = getCardAt(useEditorStore.getState().cards, 1);
+		useEditorStore.getState().updateCard(secondCard.id, { name: "Second" });
+		useEditorStore.getState().undo(firstCard.id);
+
+		expect(useEditorStore.getState().cards[0]?.nodes[0]?.rotation).toBe(0);
+		expect(useEditorStore.getState().cards[1]?.name).toBe("Second");
+
+		useEditorStore.getState().redo(firstCard.id);
+		expect(useEditorStore.getState().cards[0]?.nodes[0]?.rotation).toBe(90);
+	});
+
+	it("clamps freeform node rotation between zero and 360 degrees", () => {
+		const card = getCardAt(useEditorStore.getState().cards, 0);
+		useEditorStore.getState().addTextNode(card.id);
+		const nodeId = useEditorStore.getState().cards[0]?.nodes[0]?.id;
+		if (!nodeId) throw new Error("Expected a text node");
+
+		useEditorStore.getState().updateNode(card.id, nodeId, { rotation: 420 });
+		expect(useEditorStore.getState().cards[0]?.nodes[0]?.rotation).toBe(360);
+
+		useEditorStore.getState().updateNode(card.id, nodeId, { rotation: -15 });
+		expect(useEditorStore.getState().cards[0]?.nodes[0]?.rotation).toBe(0);
+	});
+
+	it("coalesces a node interaction into one undo step", () => {
+		const card = getCardAt(useEditorStore.getState().cards, 0);
+		useEditorStore.getState().addTextNode(card.id);
+		const nodeId = useEditorStore.getState().cards[0]?.nodes[0]?.id;
+		if (!nodeId) throw new Error("Expected a text node");
+		useEditorStore.getState().beginHistoryTransaction(card.id);
+		useEditorStore.getState().updateNode(card.id, nodeId, { x: 50 });
+		useEditorStore.getState().updateNode(card.id, nodeId, { x: 100 });
+		useEditorStore.getState().endHistoryTransaction(card.id);
+
+		expect(useEditorStore.getState().cardHistories[card.id]?.past).toHaveLength(
+			2,
+		);
+		useEditorStore.getState().undo(card.id);
+		expect(useEditorStore.getState().cards[0]?.nodes[0]?.x).toBe(24);
 	});
 
 	it("selects the nearest card after deleting the selection", () => {

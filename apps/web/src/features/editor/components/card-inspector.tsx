@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { ColorField } from "#/components/ui/color-field";
 import { Field, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
@@ -7,7 +8,6 @@ import {
 	PopoverTrigger,
 } from "#/components/ui/popover";
 import { Slider } from "#/components/ui/slider";
-import { ChevronDown } from "lucide-react";
 import {
 	CardFillInspector,
 	CardTextureInspector,
@@ -66,16 +66,11 @@ export function CardInspector({ card }: CardInspectorProps) {
 	return (
 		<div className="space-y-3 px-4 py-5">
 			<div className="space-y-2">
-				<Field className="relative space-y-0">
-					<FieldLabel
-						className="pointer-events-none absolute top-1/2 left-4 z-10 -translate-y-1/2 capitalize"
-						htmlFor="card-name"
-					>
-						Card Name
-					</FieldLabel>
+				<Field className="space-y-0">
 					<Input
 						id="card-name"
-						className="pl-28"
+						aria-label="Card Name"
+						placeholder="Card name"
 						value={card.name}
 						onChange={(event) =>
 							updateCard(card.id, { name: event.target.value })
@@ -89,8 +84,10 @@ export function CardInspector({ card }: CardInspectorProps) {
 							aria-label="Aspect ratio"
 							className="flex min-h-12 w-full items-center rounded-lg border border-hairline bg-white px-3 text-xs"
 						>
-							<span className="font-semibold">Aspect ratio</span>
-							<span className="ml-auto text-muted-foreground">
+							<span className="mono-label text-muted-foreground">
+								Aspect ratio
+							</span>
+							<span className="ml-auto font-semibold text-foreground">
 								{
 									ASPECT_RATIOS.find(
 										({ value }) => value === card.settings.aspectRatio,
@@ -232,12 +229,12 @@ function BorderStyleSelect({
 				<button
 					type="button"
 					aria-label="Border style"
-					className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-hairline bg-white px-3 text-xs"
+					className="flex min-h-12 w-full items-center gap-3 rounded-lg border border-hairline bg-white px-4 font-sans text-xs font-bold"
 				>
-					<BorderStyleSwatch value={value} />
-					<span className="font-semibold">Border style</span>
-					<span className="ml-auto capitalize text-muted-foreground">
-						{value}
+					<span className="mono-label text-muted-foreground">Border style</span>
+					<span className="ml-auto flex items-center gap-2">
+						<BorderStyleSwatch value={value} />
+						<span className="capitalize">{value}</span>
 					</span>
 					<ChevronDown className="size-3" />
 				</button>
@@ -323,6 +320,7 @@ function NumberField({
 	value,
 	min,
 	max,
+	step,
 	onChange,
 	className,
 }: {
@@ -331,9 +329,12 @@ function NumberField({
 	value: number;
 	min?: number;
 	max?: number;
+	step?: number;
 	onChange: (value: string) => void;
 	className?: string;
 }) {
+	const effectiveStep = max !== undefined && max >= 100 ? 1 : step;
+
 	return (
 		<Field className="relative space-y-0">
 			<FieldLabel
@@ -347,6 +348,7 @@ function NumberField({
 				type="number"
 				min={min}
 				max={max}
+				step={effectiveStep}
 				className={cn("pr-4 pl-16 text-right", className)}
 				value={value}
 				onChange={(event) => onChange(event.target.value)}

@@ -24,7 +24,7 @@ function getMaskSvg(node: ShapeNode) {
 					width: "100%",
 					height: "100%",
 					stroke: "black",
-					strokeWidth: 1.8,
+					strokeWidth: node.strokeWidth,
 				}),
 			);
 		}
@@ -37,7 +37,7 @@ function getMaskSvg(node: ShapeNode) {
 				? '<rect width="100" height="100" fill="black"/>'
 				: node.shapeType === "emoji"
 					? `<text x="50" y="82" text-anchor="middle" font-size="80">${escapeXml(node.shape)}</text>`
-					: `<line x1="0" y1="50" x2="100" y2="50" stroke="black" stroke-width="6" stroke-linecap="round" transform="rotate(${node.shape === "vertical" ? 90 : node.shape === "diagonal-up" ? -30 : node.shape === "diagonal-down" ? 30 : 0} 50 50)"/>`;
+					: `<line x1="0" y1="50" x2="100" y2="50" stroke="black" stroke-width="${node.strokeWidth}" stroke-linecap="round" transform="rotate(${node.shape === "vertical" ? 90 : node.shape === "diagonal-up" ? -30 : node.shape === "diagonal-down" ? 30 : 0} 50 50)"/>`;
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${content}</svg>`;
 }

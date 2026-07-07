@@ -41,7 +41,8 @@ export function ShapePicker({
 				<button
 					type="button"
 					aria-label={`Add shape to ${cardName}`}
-					className="flex h-6 items-center gap-1 rounded-md bg-primary px-2 text-[10px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/80"
+					className="card-control card-control-icon"
+					data-tooltip="Add shape"
 					onClick={(event) => event.stopPropagation()}
 				>
 					<Shapes className="size-3" />
@@ -102,6 +103,7 @@ export function ShapePicker({
 										shapeType: item.type,
 										shape: item.value,
 										color: "currentColor",
+										strokeWidth: 1,
 									}}
 									className="size-6 max-h-6 max-w-6"
 								/>

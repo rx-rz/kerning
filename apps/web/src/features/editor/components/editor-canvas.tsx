@@ -2,14 +2,14 @@ import useEmblaCarousel from "embla-carousel-react";
 import {
 	ChevronLeft,
 	ChevronRight,
-	Info,
 	Languages,
 	Lock,
 	LockOpen,
 	Plus,
 	RectangleHorizontal,
+	Redo2,
 	RotateCcw,
-	ScanText,
+	Undo2,
 	ZoomIn,
 	ZoomOut,
 } from "lucide-react";
@@ -22,6 +22,7 @@ import { useEditorStore } from "#/features/editor/store/editor-store";
 
 type EditorCanvasProps = {
 	projectTitle?: string;
+	projectUpdatedAt?: string;
 	onProjectTitleChange?: (title: string) => void;
 	onToggleInspector?: () => void;
 	onSelectNode?: () => void;
@@ -35,6 +36,7 @@ const ZOOM_STEP = 0.1;
 
 export function EditorCanvas({
 	projectTitle = "Untitled Project",
+	projectUpdatedAt,
 	onProjectTitleChange,
 	onToggleInspector,
 	onSelectNode,
@@ -44,13 +46,29 @@ export function EditorCanvas({
 	const [zoom, setZoom] = useState(1);
 	const [isCardDragLocked, setIsCardDragLocked] = useState(false);
 	const [title, setTitle] = useState(projectTitle);
+	const [lastEditedAt, setLastEditedAt] = useState<string | null>(null);
+	const [cardTitle, setCardTitle] = useState("");
 	const cancelTitleCommit = useRef(false);
+	const cancelCardTitleCommit = useRef(false);
 	const cards = useEditorStore((state) => state.cards);
 	const selectedCardId = useEditorStore((state) => state.selectedCardId);
 	const selectCard = useEditorStore((state) => state.selectCard);
 	const addCard = useEditorStore((state) => state.addCard);
 	const deleteCard = useEditorStore((state) => state.deleteCard);
 	const resetEditor = useEditorStore((state) => state.resetEditor);
+	const updateCard = useEditorStore((state) => state.updateCard);
+	const undo = useEditorStore((state) => state.undo);
+	const redo = useEditorStore((state) => state.redo);
+	const canUndo = useEditorStore((state) =>
+		selectedCardId
+			? Boolean(state.cardHistories[selectedCardId]?.past.length)
+			: false,
+	);
+	const canRedo = useEditorStore((state) =>
+		selectedCardId
+			? Boolean(state.cardHistories[selectedCardId]?.future.length)
+			: false,
+	);
 	const [emblaRef, emblaApi] = useEmblaCarousel({
 		align: "center",
 		containScroll: false,
@@ -59,12 +77,13 @@ export function EditorCanvas({
 		watchDrag: isCardDragLocked
 			? false
 			: (_emblaApi, event) => {
-					const target = event.target as HTMLElement | null;
-					return !target?.closest?.("[data-editor-node]");
-				},
+				const target = event.target as HTMLElement | null;
+				return !target?.closest?.("[data-editor-node]");
+			},
 	});
 	const lastWheelNavigationAt = useRef(0);
 	const selectedIndex = cards.findIndex((card) => card.id === selectedCardId);
+	const selectedCard = selectedIndex >= 0 ? cards[selectedIndex] : undefined;
 	const hasPreviousCard = selectedIndex > 0;
 	const hasNextCard = selectedIndex >= 0 && selectedIndex < cards.length - 1;
 	const zoomPercentage = Math.round(zoom * 100);
@@ -73,6 +92,30 @@ export function EditorCanvas({
 		setTitle(projectTitle);
 	}, [projectTitle]);
 
+	useEffect(() => {
+		setLastEditedAt(projectUpdatedAt ?? null);
+	}, [projectUpdatedAt]);
+
+	useEffect(() => {
+		setCardTitle(selectedCard?.name ?? "");
+	}, [selectedCard?.name]);
+
+	useEffect(() => {
+		function handleHistoryShortcut(event: KeyboardEvent) {
+			if (!selectedCardId || !(event.metaKey || event.ctrlKey)) return;
+			const target = event.target as HTMLElement | null;
+			if (target?.matches("input, textarea, select, [contenteditable='true']"))
+				return;
+			if (event.key.toLowerCase() !== "z") return;
+			event.preventDefault();
+			if (event.shiftKey) redo(selectedCardId);
+			else undo(selectedCardId);
+		}
+
+		window.addEventListener("keydown", handleHistoryShortcut);
+		return () => window.removeEventListener("keydown", handleHistoryShortcut);
+	}, [redo, selectedCardId, undo]);
+
 	function commitProjectTitle() {
 		if (cancelTitleCommit.current) {
 			cancelTitleCommit.current = false;
@@ -80,7 +123,23 @@ export function EditorCanvas({
 		}
 		const nextTitle = title.trim() || projectTitle;
 		setTitle(nextTitle);
-		if (nextTitle !== projectTitle) onProjectTitleChange?.(nextTitle);
+		if (nextTitle !== projectTitle) {
+			onProjectTitleChange?.(nextTitle);
+			setLastEditedAt(new Date().toISOString());
+		}
+	}
+
+	function commitCardTitle() {
+		if (cancelCardTitleCommit.current) {
+			cancelCardTitleCommit.current = false;
+			return;
+		}
+		if (!selectedCard) return;
+		const nextTitle = cardTitle.trim() || selectedCard.name;
+		setCardTitle(nextTitle);
+		if (nextTitle !== selectedCard.name) {
+			updateCard(selectedCard.id, { name: nextTitle });
+		}
 	}
 
 	const syncSelectionFromCarousel = useCallback(() => {
@@ -179,7 +238,7 @@ export function EditorCanvas({
 	return (
 		<section
 			aria-label="Editor preview"
-			className="relative h-full min-h-0 overflow-hidden backdrop-blur-xl"
+			className="check-card relative h-full min-h-0 overflow-hidden"
 			onKeyDown={(event) => {
 				if (event.key === "Escape") {
 					selectCard(null);
@@ -197,7 +256,7 @@ export function EditorCanvas({
 			>
 				<Languages />
 			</Button>
-			<div
+			{!selectedCard && <div
 				aria-label="Project controls"
 				className="absolute top-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-white/60 bg-surface-glass p-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-3xl"
 				onPointerDown={(event) => event.stopPropagation()}
@@ -219,36 +278,85 @@ export function EditorCanvas({
 					}}
 				/>
 				<div className="h-5 w-px bg-border" />
-				<Button
-					type="button"
-					aria-label={
-						isCardDragLocked ? "Unlock card dragging" : "Lock card dragging"
-					}
-					aria-pressed={isCardDragLocked}
-					variant={isCardDragLocked ? "secondary" : "ghost"}
-					size="icon-sm"
-					onClick={() => setIsCardDragLocked((isLocked) => !isLocked)}
-				>
-					{isCardDragLocked ? <Lock /> : <LockOpen />}
-				</Button>
-				<div className="group relative flex items-center">
-					<button
-						type="button"
-						aria-label="About card drag lock"
-						aria-describedby="card-lock-tooltip"
-						className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					>
-						<Info className="size-3.5" />
-					</button>
-					<span
-						id="card-lock-tooltip"
-						role="tooltip"
-						className="pointer-events-none absolute top-full left-1/2 mt-2 w-max max-w-56 -translate-x-1/2 rounded-md bg-foreground px-2.5 py-1.5 text-center text-xs text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-					>
-						Lock to prevent dragging between cards while you edit.
-					</span>
-				</div>
+				<span className="px-2 font-mono text-[10px] text-muted-foreground">
+					{formatLastEdited(lastEditedAt)}
+				</span>
 			</div>
+			}
+			{selectedCard ? (
+				<div
+					aria-label="Selected card controls"
+					className="absolute top-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-white/60 bg-surface-glass p-2 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-3xl"
+					onPointerDown={(event) => event.stopPropagation()}
+					role="toolbar"
+				>
+					<span className="px-2 font-mono text-[10px] font-semibold tabular-nums text-muted-foreground">
+						Card {selectedIndex + 1}
+					</span>
+					<div className="h-5 w-px bg-border" />
+					<input
+						aria-label="Card name"
+						className="w-40 rounded-md bg-transparent px-2 py-1 text-sm font-medium outline-none transition-colors hover:bg-muted/70 focus:bg-muted focus:ring-1 focus:ring-ring"
+						value={cardTitle}
+						onBlur={commitCardTitle}
+						onChange={(event) => setCardTitle(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === "Enter") event.currentTarget.blur();
+							if (event.key === "Escape") {
+								cancelCardTitleCommit.current = true;
+								setCardTitle(selectedCard.name);
+								event.currentTarget.blur();
+							}
+						}}
+					/>
+					<div className="h-5 w-px bg-border" />
+					<Button
+						type="button"
+						aria-label="Undo card change"
+						variant="ghost"
+						size="icon-sm"
+						disabled={!canUndo}
+						onClick={() => undo(selectedCard.id)}
+						title="Undo card change"
+					>
+						<Undo2 />
+					</Button>
+					<Button
+						type="button"
+						aria-label="Redo card change"
+						variant="ghost"
+						size="icon-sm"
+						disabled={!canRedo}
+						onClick={() => redo(selectedCard.id)}
+						title="Redo card change"
+					>
+						<Redo2 />
+					</Button>
+					<div className="h-5 w-px bg-border" />
+					<div className="group relative flex items-center">
+						<Button
+							type="button"
+							aria-describedby="card-lock-tooltip"
+							aria-label={
+								isCardDragLocked ? "Unlock card dragging" : "Lock card dragging"
+							}
+							aria-pressed={isCardDragLocked}
+							variant={isCardDragLocked ? "secondary" : "ghost"}
+							size="icon-sm"
+							onClick={() => setIsCardDragLocked((isLocked) => !isLocked)}
+						>
+							{isCardDragLocked ? <Lock /> : <LockOpen />}
+						</Button>
+						<span
+							id="card-lock-tooltip"
+							role="tooltip"
+							className="pointer-events-none absolute top-full left-1/2 mt-2 w-max max-w-56 -translate-x-1/2 rounded-md bg-foreground px-2.5 py-1.5 text-center text-xs text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+						>
+							Lock to prevent dragging between cards while you edit.
+						</span>
+					</div>
+				</div>
+			) : null}
 
 			{cards.length ? (
 				<section
@@ -257,7 +365,7 @@ export function EditorCanvas({
 					className="h-full touch-pan-y overflow-x-hidden scrollbar-none"
 					onWheel={handleWheel}
 				>
-					<div className="flex min-h-full items-center gap-12 px-16 pt-20 pb-28">
+					<div className="flex min-h-full items-center gap-12 px-16 pt-32 pb-28">
 						{cards.map((card) => (
 							<div key={card.id} className="flex-[0_0_auto]">
 								<EditorCard
@@ -383,4 +491,14 @@ export function EditorCanvas({
 			) : null}
 		</section>
 	);
+}
+
+function formatLastEdited(value: string | null) {
+	if (!value) return "Last edited —";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "Last edited —";
+	return `Last edited ${date.toLocaleString([], {
+		dateStyle: "medium",
+		timeStyle: "short",
+	})}`;
 }

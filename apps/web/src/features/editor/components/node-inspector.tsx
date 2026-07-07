@@ -5,7 +5,6 @@ import {
 	AlignRight,
 	Crop,
 	Scan,
-	Trash2,
 } from "lucide-react";
 import { useId, useState } from "react";
 
@@ -13,7 +12,6 @@ import { Button } from "#/components/ui/button";
 import { ColorField } from "#/components/ui/color-field";
 import { Field, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
-import { Slider } from "#/components/ui/slider";
 import {
 	Select,
 	SelectContent,
@@ -21,9 +19,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "#/components/ui/select";
+import { Slider } from "#/components/ui/slider";
 import { deleteEditorImage, replaceEditorImage } from "#/db/image-db";
-import { InspectorSection } from "#/features/editor/components/inspector-section";
 import { CardTextureInspector } from "#/features/editor/components/card-fill-inspector";
+import { InspectorSection } from "#/features/editor/components/inspector-section";
 import {
 	NODE_CARD_INSET,
 	useEditorStore,
@@ -47,48 +46,18 @@ type NodeInspectorProps = {
 
 export function NodeInspector({ card, node }: NodeInspectorProps) {
 	const updateNode = useEditorStore((state) => state.updateNode);
-	const deleteNode = useEditorStore((state) => state.deleteNode);
 
 	function updateNumericValue(
 		key: "x" | "y" | "width" | "height",
 		value: string,
 	) {
-		const parsedValue =
-			node.type === "image" ? Math.ceil(Number(value)) : Number(value);
+		const parsedValue = Math.round(Number(value));
 		if (Number.isFinite(parsedValue))
 			updateNode(card.id, node.id, { [key]: parsedValue });
 	}
 
-	function handleDelete() {
-		if (node.type === "image" && node.imageId) {
-			void deleteEditorImage(node.imageId);
-		}
-		deleteNode(card.id, node.id);
-	}
-
 	return (
 		<div className="space-y-3 px-4 py-5">
-			{/* {node.type === "text" ? (
-				<section className="flex items-center justify-between px-5 py-4">
-					<div>
-						<p className="text-xs font-semibold capitalize">{node.type} node</p>
-						<p className="mt-1 font-mono text-[10px] text-muted-foreground">
-							Positioned inside {card.name}
-						</p>
-					</div>
-					<Button
-						type="button"
-						aria-label={`Delete ${node.type} node`}
-						variant="ghost"
-						size="icon-sm"
-						className="text-destructive"
-						onClick={handleDelete}
-					>
-						<Trash2 />
-					</Button>
-				</section>
-			) : null} */}
-
 			{node.type === "text" ? (
 				<TextSettings cardId={card.id} node={node} />
 			) : node.type === "image" ? (
@@ -111,6 +80,17 @@ export function NodeInspector({ card, node }: NodeInspectorProps) {
 						/>
 					))}
 				</div>
+				<NumberField
+					id="node-rotation"
+					label="Rotation"
+					value={node.rotation ?? 0}
+					min={0}
+					max={360}
+					step={1}
+					onChange={(value) =>
+						updateFinite(updateNode, card.id, node.id, "rotation", value)
+					}
+				/>
 			</InspectorSection>
 		</div>
 	);
@@ -121,7 +101,7 @@ function ShapeSettings({ cardId, node }: { cardId: string; node: ShapeNode }) {
 
 	return (
 		<>
-			<InspectorSection title="Shape" defaultOpen>
+			<InspectorSection title="Shape">
 				<ColorField
 					label="Color"
 					ariaLabel="Shape color"
@@ -140,6 +120,17 @@ function ShapeSettings({ cardId, node }: { cardId: string; node: ShapeNode }) {
 						}
 					}}
 				/>
+				<NumberField
+					id="shape-stroke-width"
+					label="Stroke width"
+					value={node.strokeWidth}
+					min={1}
+					max={24}
+					step={1}
+					onChange={(value) =>
+						updateFinite(updateNode, cardId, node.id, "strokeWidth", value)
+					}
+				/>
 			</InspectorSection>
 			<InspectorSection title="Texture">
 				<CardTextureInspector
@@ -157,19 +148,24 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 	return (
 		<>
 			<InspectorSection title="Content">
-				<Field className="space-y-1">
-					<FieldLabel htmlFor="node-text">Text</FieldLabel>
+				<Field className="relative space-y-0">
+					<FieldLabel
+						htmlFor="node-text"
+						className="pointer-events-none absolute top-1/2 left-4 z-10 -translate-y-1/2"
+					>
+						Text
+					</FieldLabel>
 					<Input
 						id="node-text"
 						aria-label="Text content"
+						className="pl-20"
 						value={node.text}
 						onChange={(event) =>
 							updateNode(cardId, node.id, { text: event.target.value })
 						}
 					/>
 				</Field>
-				<Field className="space-y-1">
-					<FieldLabel htmlFor="node-font-role">Font role</FieldLabel>
+				<Field className="space-y-0">
 					<Select
 						value={node.fontType}
 						onValueChange={(fontType) =>
@@ -179,6 +175,9 @@ function TextSettings({ cardId, node }: { cardId: string; node: TextNode }) {
 						}
 					>
 						<SelectTrigger id="node-font-role">
+							<span className="mono-label mr-auto text-muted-foreground">
+								Font role
+							</span>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
@@ -318,7 +317,7 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 
 	return (
 		<>
-			<InspectorSection title="Image" defaultOpen>
+			<InspectorSection title="Image">
 				<Field className="space-y-1">
 					<Input
 						id="node-image-upload"
@@ -385,36 +384,6 @@ function ImageSettings({ cardId, node }: { cardId: string; node: ImageNode }) {
 						{ value: "contain", label: "Contain", visual: <Scan /> },
 					]}
 				/>
-				<Field className="space-y-1">
-					<FieldLabel htmlFor="image-blend-mode">Blend mode</FieldLabel>
-					<Select
-						value={node.blendMode ?? "normal"}
-						onValueChange={(blendMode) =>
-							updateNode(cardId, node.id, {
-								blendMode: blendMode as ImageNode["blendMode"],
-							})
-						}
-					>
-						<SelectTrigger id="image-blend-mode" className="w-full">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{[
-								"normal",
-								"multiply",
-								"screen",
-								"overlay",
-								"difference",
-								"lighten",
-								"darken",
-							].map((mode) => (
-								<SelectItem key={mode} value={mode}>
-									<span className="capitalize">{mode}</span>
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</Field>
 				<div className="space-y-2 pt-2">
 					<div className="flex items-center justify-between">
 						<h4 className="font-sans text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
@@ -505,10 +474,10 @@ function updateFinite(
 	updateNode: (cardId: string, nodeId: string, patch: EditorNodePatch) => void,
 	cardId: string,
 	nodeId: string,
-	key: "fontSize" | "lineHeight" | "letterSpacing",
+	key: "fontSize" | "lineHeight" | "letterSpacing" | "strokeWidth" | "rotation",
 	value: string,
 ) {
-	const parsedValue = Number(value);
+	const parsedValue = Math.round(Number(value) * 100) / 100;
 	if (Number.isFinite(parsedValue))
 		updateNode(cardId, nodeId, { [key]: parsedValue });
 }
@@ -530,6 +499,8 @@ function NumberField({
 	step?: number;
 	onChange: (value: string) => void;
 }) {
+	const effectiveStep = max !== undefined && max >= 100 ? 1 : step;
+
 	return (
 		<Field className="relative space-y-0">
 			<FieldLabel
@@ -543,7 +514,7 @@ function NumberField({
 				type="number"
 				min={min}
 				max={max}
-				step={step}
+				step={effectiveStep}
 				className="pr-4 pl-20 text-right"
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
@@ -566,12 +537,15 @@ function VisualChoiceGroup({
 	const name = useId();
 
 	return (
-		<fieldset className="flex items-center gap-2">
+		<fieldset className="flex min-h-12 items-center gap-3 rounded-lg bg-white px-4 shadow-[inset_0_0_0_1px_var(--line-hair)]">
 			<legend className="sr-only">{label}</legend>
-			<span aria-hidden="true" className="w-16 shrink-0 text-xs font-semibold">
+			<span
+				aria-hidden="true"
+				className="mono-label w-20 shrink-0 text-muted-foreground"
+			>
 				{label}
 			</span>
-			<div className="grid min-w-0 flex-1 grid-flow-col auto-cols-fr gap-1">
+			<div className="grid min-w-0 flex-1 grid-flow-col auto-cols-fr gap-1.5 py-1.5">
 				{options.map((option) => (
 					<label key={option.value} className="cursor-pointer">
 						<input
@@ -583,7 +557,7 @@ function VisualChoiceGroup({
 							className="peer sr-only"
 							onChange={() => onChange(option.value)}
 						/>
-						<span className="flex min-h-12 items-center justify-center rounded-lg border border-hairline bg-white text-xs font-semibold text-muted-foreground transition-colors peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground [&_svg]:size-4">
+						<span className="flex min-h-9 items-center justify-center rounded-md border border-hairline bg-white font-sans text-xs font-semibold text-muted-foreground transition-colors peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground [&_svg]:size-4">
 							{option.visual}
 							<span className="sr-only">{option.label}</span>
 						</span>
