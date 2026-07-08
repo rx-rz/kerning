@@ -19,6 +19,7 @@ type GoogleFontsApiFamily = {
   version?: string
   lastModified?: string
   category?: string
+  files?: Record<string, string>
   axes?: Array<{
     tag?: string
     start?: number
@@ -55,7 +56,7 @@ export async function searchGoogleFontsService({
   }
 
   const cachedCatalog = await GoogleFontsCache.getCatalog()
-  const catalog = cachedCatalog ?? await fetchGoogleFontsCatalog()
+  const catalog = cachedCatalog ?? (await fetchGoogleFontsCatalog())
 
   if (!cachedCatalog) {
     await GoogleFontsCache.setCatalog(catalog)
@@ -76,6 +77,7 @@ async function fetchGoogleFontsCatalog() {
   const url = new URL('https://www.googleapis.com/webfonts/v1/webfonts')
 
   url.searchParams.set('key', env.GOOGLE_FONTS_API_KEY)
+  url.searchParams.set('capability', 'VF')
 
   const response = await fetch(url)
 
@@ -90,19 +92,23 @@ async function fetchGoogleFontsCatalog() {
 
 function filterGoogleFonts(
   fonts: GoogleFontCatalogItem[],
-  input: ReturnType<typeof normalizeInput>
+  input: ReturnType<typeof normalizeInput>,
 ) {
   const query = input.q.trim().toLowerCase()
 
-  return fonts.filter((font) => {
-    if (input.category && font.category !== input.category) return false
-    if (!query) return true
+  return fonts
+    .filter((font) => {
+      if (input.category && font.category !== input.category) return false
+      if (!query) return true
 
-    return font.family.toLowerCase().includes(query)
-  }).slice(0, input.limit)
+      return font.family.toLowerCase().includes(query)
+    })
+    .slice(0, input.limit)
 }
 
-function mapGoogleFontFamily(font: GoogleFontsApiFamily): GoogleFontCatalogItem {
+function mapGoogleFontFamily(
+  font: GoogleFontsApiFamily,
+): GoogleFontCatalogItem {
   return {
     id: `google:${slugify(font.family)}`,
     source: 'google',
@@ -113,11 +119,12 @@ function mapGoogleFontFamily(font: GoogleFontsApiFamily): GoogleFontCatalogItem 
     axes: mapGoogleFontAxes(font.axes),
     version: font.version,
     lastModified: font.lastModified,
+    files: font.files,
   }
 }
 
 function mapGoogleFontAxes(
-  axes: GoogleFontsApiFamily['axes']
+  axes: GoogleFontsApiFamily['axes'],
 ): FontAxis[] | undefined {
   const mappedAxes = axes?.flatMap((axis) => {
     if (!axis.tag || axis.start === undefined || axis.end === undefined) {

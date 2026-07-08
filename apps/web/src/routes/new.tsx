@@ -1,4 +1,8 @@
-import type { GoogleFontCatalogItem, ProjectFontInput } from "@kerning/shared";
+import type {
+	GoogleFontCatalogItem,
+	ProjectFontFace,
+	ProjectFontInput,
+} from "@kerning/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Info, Upload } from "lucide-react";
@@ -443,7 +447,9 @@ function ConfirmProjectView({
 						onChange={(event) => onProjectNameChange(event.target.value)}
 						placeholder="My Project"
 						aria-invalid={Boolean(projectNameError)}
-						aria-describedby={projectNameError ? "project-name-error" : undefined}
+						aria-describedby={
+							projectNameError ? "project-name-error" : undefined
+						}
 						className="bg-surface-paper text-lg"
 					/>
 					{projectNameError && (
@@ -653,6 +659,7 @@ async function buildProjectFontInputs({
 	return Promise.all(
 		fonts.map(async (font, index): Promise<ProjectFontInput> => {
 			if (font.source === "google") {
+				const face = createGoogleProjectFace(font);
 				return {
 					id: font.id,
 					source: "google",
@@ -666,7 +673,7 @@ async function buildProjectFontInputs({
 					axes: font.axes,
 					version: font.version,
 					lastModified: font.lastModified,
-					faces: [],
+					faces: face ? [face] : [],
 					createdAt: font.createdAt,
 				};
 			}
@@ -735,6 +742,43 @@ async function buildProjectFontInputs({
 			};
 		}),
 	);
+}
+
+function createGoogleProjectFace(
+	font: FontFamilyMeta,
+): ProjectFontFace | undefined {
+	const files = font.files;
+	if (!files) return undefined;
+	const entries = Object.entries(files);
+	const selected =
+		entries.find(([variant]) => variant === "regular") ??
+		entries.find(([variant]) => variant === "400") ??
+		entries[0];
+	if (!selected) return undefined;
+	const [variant, fileUrl] = selected;
+	const italic = variant.includes("italic");
+	const weightMatch = variant.match(/\d+/);
+	const weight = weightMatch ? Number(weightMatch[0]) : 400;
+	const extension = new URL(fileUrl).pathname.split(".").pop()?.toLowerCase();
+	const format = extension === "otf" ? "otf" : "ttf";
+	return {
+		id: `google-${variant}`,
+		fileUrl,
+		fileName: `${font.name.replace(/[^a-z0-9]+/gi, "-")}-${variant}.${format}`,
+		size: 0,
+		sizeLabel: "Pending import",
+		format,
+		kind: font.axes?.length ? "variable" : "static",
+		weight,
+		weightRange: font.axes?.find((axis) => axis.tag === "wght")
+			? {
+					min: font.axes.find((axis) => axis.tag === "wght")!.min,
+					max: font.axes.find((axis) => axis.tag === "wght")!.max,
+				}
+			: undefined,
+		axes: font.axes,
+		style: italic ? "italic" : "normal",
+	};
 }
 
 function createProjectFontFileKey({

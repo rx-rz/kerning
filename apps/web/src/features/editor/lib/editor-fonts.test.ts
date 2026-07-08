@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import type { ProjectFontFace } from "@kerning/shared";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	EDITOR_TEMPLATES,
 	getTemplateFontType,
@@ -9,10 +9,18 @@ import {
 } from "#/features/editor/lib/editor-templates";
 import {
 	extractGoogleFontUrls,
+	extractGlyphs,
+	getFontSourceUrls,
+	loadGlyphFont,
 	normalizeGlyphMetrics,
 	prepareFontBuffer,
 	selectPreferredFace,
 } from "#/features/editor/lib/glyph-font";
+
+afterEach(() => {
+	vi.restoreAllMocks();
+	vi.useRealTimers();
+});
 
 function face(
 	id: string,
@@ -92,6 +100,104 @@ describe("editor font helpers", () => {
 		);
 
 		expect([...new Uint8Array(prepared, 0, 4)]).toEqual([0, 1, 0, 0]);
+	});
+
+	it("shares decoder initialization across parallel WOFF2 preparations", async () => {
+		const source = await readFile(
+			new URL("../../../../public/fonts/geist.woff2", import.meta.url),
+		);
+		const buffer = source.buffer.slice(
+			source.byteOffset,
+			source.byteOffset + source.byteLength,
+		) as ArrayBuffer;
+		const prepared = await Promise.all(
+			Array.from({ length: 4 }, () => prepareFontBuffer(buffer.slice(0))),
+		);
+
+		expect(prepared).toHaveLength(4);
+		for (const result of prepared) {
+			expect([...new Uint8Array(result, 0, 4)]).toEqual([0, 1, 0, 0]);
+		}
+	});
+
+	it("prefers a stored face URL for Google and uploaded fonts", async () => {
+		for (const source of ["google", "upload"] as const) {
+			const storedFace = {
+				...face("regular", 400),
+				fileUrl: "https://cdn.test/font.ttf",
+			};
+			expect(
+				await getFontSourceUrls({
+					dbId: source,
+					id: source,
+					source,
+					family: "Example",
+					faces: [storedFace],
+					createdAt: "2026-01-01T00:00:00.000Z",
+					updatedAt: "2026-01-01T00:00:00.000Z",
+				}),
+			).toEqual([storedFace.fileUrl]);
+		}
+	});
+
+	it("uses Google CSS2 only when no stored face exists", async () => {
+		const fetchMock = vi
+			.spyOn(globalThis, "fetch")
+			.mockResolvedValue(
+				new Response(
+					"@font-face { src: url(https://fonts.gstatic.com/fallback.woff2) }",
+				),
+			);
+		const urls = await getFontSourceUrls({
+			dbId: "legacy-google",
+			id: "legacy-google",
+			source: "google",
+			family: "Legacy",
+			faces: [],
+			createdAt: "2026-01-01T00:00:00.000Z",
+			updatedAt: "2026-01-01T00:00:00.000Z",
+		});
+
+		expect(urls).toEqual(["https://fonts.gstatic.com/fallback.woff2"]);
+		expect(fetchMock.mock.calls[0]?.[0].toString()).toContain(
+			"fonts.googleapis.com/css2",
+		);
+	});
+
+	it("rejects instead of hanging when a font download times out", async () => {
+		vi.useFakeTimers();
+		vi.spyOn(globalThis, "fetch").mockReturnValue(new Promise(() => {}));
+		const request = loadGlyphFont({
+			dbId: "timeout-font",
+			id: "timeout-font",
+			source: "upload",
+			family: "Timeout",
+			faces: [
+				{ ...face("timeout", 400), fileUrl: "https://cdn.test/timeout.ttf" },
+			],
+			createdAt: "2026-01-01T00:00:00.000Z",
+			updatedAt: "2026-01-01T00:00:00.000Z",
+		});
+		const rejection = expect(request).rejects.toThrow("could not be parsed");
+		await vi.dynamicImportSettled();
+		await vi.advanceTimersByTimeAsync(10_001);
+		await rejection;
+	});
+
+	it("extracts printable glyphs and excludes control and separator characters", () => {
+		const glyphs = [
+			{ unicodes: [], unicode: undefined },
+			{ unicodes: [65], unicode: 65 },
+			{ unicodes: [10], unicode: 10 },
+			{ unicodes: [32], unicode: 32 },
+		];
+		const font = {
+			glyphs: { length: glyphs.length, get: (index: number) => glyphs[index] },
+		} as never;
+
+		expect(extractGlyphs([font]).map(({ character }) => character)).toEqual([
+			"A",
+		]);
 	});
 
 	it("assigns semantic template roles and resolves missing fonts", () => {

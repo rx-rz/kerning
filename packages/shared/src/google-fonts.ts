@@ -1,7 +1,7 @@
 import * as v from 'valibot'
 
 export const GoogleFontCategorySchema = v.optional(
-  v.picklist(['serif', 'sans-serif', 'monospace', 'display', 'handwriting'])
+  v.picklist(['serif', 'sans-serif', 'monospace', 'display', 'handwriting']),
 )
 
 export const GoogleFontSearchInputSchema = v.object({
@@ -9,7 +9,7 @@ export const GoogleFontSearchInputSchema = v.object({
   category: GoogleFontCategorySchema,
   limit: v.optional(
     v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(100)),
-    50
+    50,
   ),
 })
 
@@ -31,6 +31,7 @@ export const GoogleFontCatalogItemSchema = v.object({
   axes: v.optional(v.array(FontAxisSchema)),
   version: v.optional(v.string()),
   lastModified: v.optional(v.string()),
+  files: v.optional(v.record(v.string(), v.string())),
 })
 
 export const ProjectFontSchema = v.object({
@@ -43,6 +44,7 @@ export const ProjectFontSchema = v.object({
   axes: v.optional(v.array(FontAxisSchema)),
   version: v.optional(v.string()),
   lastModified: v.optional(v.string()),
+  files: v.optional(v.record(v.string(), v.string())),
   createdAt: v.string(),
 })
 

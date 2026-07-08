@@ -24,6 +24,38 @@ export type LoadedGlyphFont = {
 
 const fontCache = new Map<string, Promise<LoadedGlyphFont>>();
 const NON_PRINTING_CHARACTER = /[\p{Cc}\p{Cf}\p{Cs}\p{Cn}\p{Z}]/u;
+const WOFF2_DECODER_TIMEOUT_MS = 7_000;
+const FONT_OPERATION_TIMEOUT_MS = 10_000;
+
+type Woff2Decoder = {
+	decompress?: (buffer: Uint8Array) => Uint8Array | false;
+	onRuntimeInitialized?: () => void;
+};
+
+let woff2DecoderPromise: Promise<Woff2Decoder> | null = null;
+
+export function withTimeout<T>(
+	promise: Promise<T>,
+	ms: number,
+	label: string,
+): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error(`${label} timed out.`)),
+			ms,
+		);
+		void promise.then(
+			(value) => {
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
+}
 
 export const SYSTEM_GLYPHS = Array.from(
 	new Set(
@@ -86,15 +118,23 @@ export function extractGoogleFontUrls(css: string) {
 	return [...urls];
 }
 
-async function getFontSourceUrls(font: ProjectFontEntity) {
+export async function getFontSourceUrls(font: ProjectFontEntity) {
+	const face = selectPreferredFace(font.faces);
+	if (face?.fileUrl) return [face.fileUrl];
+
 	if (font.source === "upload") {
-		const face = selectPreferredFace(font.faces);
 		if (!face?.fileUrl)
 			throw new Error("This font face has no downloadable file.");
 		return [face.fileUrl];
 	}
 
-	const response = await fetch(createGoogleFontCssUrl(font));
+	// Legacy fallback for Google fonts imported before font assets were self-hosted.
+	// New imports should always have a CDN-backed face and return above.
+	const response = await withTimeout(
+		fetch(createGoogleFontCssUrl(font)),
+		FONT_OPERATION_TIMEOUT_MS,
+		"Google Fonts stylesheet download",
+	);
 	if (!response.ok)
 		throw new Error("Google Fonts did not return a font stylesheet.");
 	const urls = extractGoogleFontUrls(await response.text());
@@ -116,21 +156,53 @@ function isWoff2(buffer: ArrayBuffer) {
 
 export async function prepareFontBuffer(buffer: ArrayBuffer) {
 	if (!isWoff2(buffer)) return buffer;
-	const { default: decoder } = await import(
-		"wawoff2/build/decompress_binding.js"
-	);
-	if (!decoder.decompress) {
-		await new Promise<void>((resolve) => {
-			decoder.onRuntimeInitialized = resolve;
-		});
-	}
+	const decoder = await getWoff2Decoder();
 	const decompressed = decoder.decompress?.(new Uint8Array(buffer));
-	if (!decompressed)
-		throw new Error("The WOFF2 font could not be decompressed.");
+	if (!decompressed) throw new Error("WOFF2 decompression failed.");
 	return decompressed.buffer.slice(
 		decompressed.byteOffset,
 		decompressed.byteOffset + decompressed.byteLength,
 	) as ArrayBuffer;
+}
+
+async function getWoff2Decoder(): Promise<Woff2Decoder> {
+	if (woff2DecoderPromise) return woff2DecoderPromise;
+
+	woff2DecoderPromise = withTimeout(
+		(async () => {
+			const { default: decoder } = (await import(
+				"wawoff2/build/decompress_binding.js"
+			)) as { default: Woff2Decoder };
+			if (decoder.decompress) return decoder;
+
+			await new Promise<void>((resolve) => {
+				const existingCallback = decoder.onRuntimeInitialized;
+				decoder.onRuntimeInitialized = () => {
+					try {
+						existingCallback?.();
+					} finally {
+						resolve();
+					}
+				};
+
+				queueMicrotask(() => {
+					if (decoder.decompress) resolve();
+				});
+			});
+
+			if (!decoder.decompress) {
+				throw new Error("WOFF2 decoder initialization failed.");
+			}
+			return decoder;
+		})(),
+		WOFF2_DECODER_TIMEOUT_MS,
+		"WOFF2 decoder initialization",
+	).catch((error: unknown) => {
+		woff2DecoderPromise = null;
+		throw error;
+	});
+
+	return woff2DecoderPromise;
 }
 
 function isPrintableCodePoint(codePoint: number) {
@@ -196,7 +268,10 @@ export function normalizeGlyphMetrics(metrics: GlyphMetrics) {
 }
 
 export function loadGlyphFont(font: ProjectFontEntity, cacheBust = 0) {
-	const cacheKey = `${font.dbId}:${font.updatedAt}:${cacheBust}`;
+	const preferredFace = selectPreferredFace(font.faces);
+	const assetVersion =
+		preferredFace?.fileUrl ?? preferredFace?.createdAt ?? "legacy";
+	const cacheKey = `${font.dbId}:${font.updatedAt}:${assetVersion}:${cacheBust}`;
 	const cached = fontCache.get(cacheKey);
 	if (cached) return cached;
 
@@ -208,10 +283,31 @@ export function loadGlyphFont(font: ProjectFontEntity, cacheBust = 0) {
 		const opentype = opentypeModule.default ?? opentypeModule;
 		const results = await Promise.allSettled(
 			sourceUrls.map(async (sourceUrl) => {
-				const response = await fetch(sourceUrl);
-				if (!response.ok) throw new Error(`Could not download ${sourceUrl}`);
-				return opentype.parse(
-					await prepareFontBuffer(await response.arrayBuffer()),
+				return withTimeout(
+					(async () => {
+						const response = await withTimeout(
+							fetch(sourceUrl),
+							FONT_OPERATION_TIMEOUT_MS,
+							`Font download (${sourceUrl})`,
+						);
+						if (!response.ok) {
+							throw new Error(
+								`Font download failed (${response.status} ${response.statusText}).`,
+							);
+						}
+						const buffer = await withTimeout(
+							prepareFontBuffer(await response.arrayBuffer()),
+							FONT_OPERATION_TIMEOUT_MS,
+							"Font decoding",
+						);
+						try {
+							return opentype.parse(buffer);
+						} catch (error) {
+							throw new Error("OpenType parse failed.", { cause: error });
+						}
+					})(),
+					FONT_OPERATION_TIMEOUT_MS,
+					"Font parsing",
 				);
 			}),
 		);
@@ -223,7 +319,11 @@ export function loadGlyphFont(font: ProjectFontEntity, cacheBust = 0) {
 				(result): result is PromiseRejectedResult =>
 					result.status === "rejected",
 			);
-			throw new Error("The selected font could not be parsed.", {
+			const detail =
+				failure?.reason instanceof Error
+					? ` ${failure.reason.message}`
+					: "";
+			throw new Error(`The selected font could not be parsed.${detail}`, {
 				cause: failure?.reason,
 			});
 		}

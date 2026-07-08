@@ -56,6 +56,7 @@ export type StoredFontFamily = {
   axes?: StoredFontAxis[]
   version?: string
   lastModified?: string
+  files?: Record<string, string>
   faces: StoredFontFace[]
   createdAt: string
   updatedAt: string
@@ -96,6 +97,7 @@ export async function saveGoogleFont(projectFont: ProjectFont) {
     axes: projectFont.axes,
     version: projectFont.version,
     lastModified: projectFont.lastModified,
+    files: projectFont.files,
     faces: [],
     createdAt: projectFont.createdAt,
     updatedAt: now,

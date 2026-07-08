@@ -34,6 +34,7 @@ const WEIGHT_MAP: Record<string, number> = {
 };
 
 const WEIGHT_WORDS = Object.keys(WEIGHT_MAP);
+export const MAX_FONT_FILE_SIZE = 10 * 1024 * 1024;
 
 type ParsedFontFile = Pick<
 	StoredFontFace,
@@ -92,6 +93,7 @@ export function createGoogleFontProjectFont(input: {
 	axes?: FontAxis[];
 	version?: string;
 	lastModified?: string;
+	files?: Record<string, string>;
 }): ProjectFont {
 	return {
 		id: input.id ?? createGoogleFontId(input.family),
@@ -103,6 +105,7 @@ export function createGoogleFontProjectFont(input: {
 		axes: input.axes,
 		version: input.version,
 		lastModified: input.lastModified,
+		files: input.files,
 		createdAt: new Date().toISOString(),
 	};
 }
@@ -378,6 +381,7 @@ export async function importGoogleFont(input: {
 	axes?: FontAxis[];
 	version?: string;
 	lastModified?: string;
+	files?: Record<string, string>;
 }) {
 	const projectFont = createGoogleFontProjectFont(input);
 
@@ -395,6 +399,7 @@ export async function importGoogleFont(input: {
 		axes: projectFont.axes,
 		version: projectFont.version,
 		lastModified: projectFont.lastModified,
+		files: projectFont.files,
 		faces: [],
 		createdAt: projectFont.createdAt,
 		updatedAt: projectFont.createdAt,
@@ -557,6 +562,12 @@ export async function uploadFontFiles(
 	if (!files?.length) return [];
 
 	const validFiles = Array.from(files).filter(isFontFile);
+	const oversizedFile = validFiles.find(
+		(file) => file.size > MAX_FONT_FILE_SIZE,
+	);
+	if (oversizedFile) {
+		throw new Error(`${oversizedFile.name} exceeds the 10 MB font file limit.`);
+	}
 
 	if (!validFiles.length) return [];
 

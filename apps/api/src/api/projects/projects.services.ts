@@ -1,5 +1,13 @@
-import type { CreateProjectInput, UpdateProjectInput } from "@kerning/shared";
-import { InternalServerError, NotFoundError } from "http-errors-enhanced";
+import type {
+  CreateProjectInput,
+  ProjectFontInput,
+  UpdateProjectInput,
+} from "@kerning/shared";
+import {
+  BadRequestError,
+  InternalServerError,
+  NotFoundError,
+} from "http-errors-enhanced";
 
 import {
   createProjectInDB,
@@ -9,6 +17,10 @@ import {
   replaceProjectFontsInDB,
   updateProjectInDB,
 } from "../../repository/projects/index.js";
+import {
+  MAX_FONT_FILE_SIZE,
+  selfHostGoogleFonts,
+} from "../google-fonts/google-font-import.services.js";
 
 export const listProjectsService = async ({ userId }: { userId: string }) =>
   listProjectsInDB({ ownerId: userId });
@@ -48,9 +60,15 @@ export const createProjectService = async ({
   }
 
   if (dto.fonts) {
+    assertFontSizes(dto.fonts);
+    const fonts = await selfHostGoogleFonts({
+      fonts: dto.fonts,
+      projectId: project.id,
+      userId,
+    });
     await replaceProjectFontsInDB({
       projectId: project.id,
-      fonts: dto.fonts,
+      fonts,
     });
   }
 
@@ -81,7 +99,9 @@ export const updateProjectService = async ({
   }
 
   if (fonts) {
-    await replaceProjectFontsInDB({ projectId, fonts });
+    assertFontSizes(fonts);
+    const hostedFonts = await selfHostGoogleFonts({ fonts, projectId, userId });
+    await replaceProjectFontsInDB({ projectId, fonts: hostedFonts });
     project = await getProjectDetailsInDB({ projectId, ownerId: userId });
   }
 
@@ -91,6 +111,17 @@ export const updateProjectService = async ({
 
   return project;
 };
+
+function assertFontSizes(fonts: ProjectFontInput[]) {
+  const oversized = fonts
+    .flatMap((font) => font.faces ?? [])
+    .find((face) => face.size > MAX_FONT_FILE_SIZE);
+  if (oversized) {
+    throw new BadRequestError(
+      `${oversized.fileName} exceeds the 10 MB font file limit`,
+    );
+  }
+}
 
 export const deleteProjectService = async ({
   projectId,
