@@ -6,8 +6,14 @@ import { useUpdateProjectApi } from "#/api/projects/update";
 import { Button } from "#/components/ui/button";
 import { EditorCanvas } from "#/features/editor/components/editor-canvas";
 import { EditorInspector } from "#/features/editor/components/editor-inspector";
-import { GlyphViewer } from "#/features/editor/components/glyph-viewer";
+import { FontSystemPanel } from "#/features/editor/components/font-system-panel";
 import { TemplateSidebar } from "#/features/editor/components/template-sidebar";
+import {
+	TypeLens,
+	type TypeLensStudy,
+} from "#/features/editor/components/type-lens";
+import { useFontLabContextStore } from "#/features/editor/font-lab-bridge/font-lab-context.store";
+import type { FontFeatureSettings } from "#/features/editor/font-system/font-system.types";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 import { loadGoogleFontStylesheet } from "#/lib/fonts";
 
@@ -62,6 +68,7 @@ export function ProjectEditorPage({ projectId }: { projectId: string }) {
 			primary={primary}
 			secondaryOne={secondaryOne}
 			secondaryTwo={secondaryTwo}
+			projectFonts={projectFonts}
 		/>
 	);
 }
@@ -73,6 +80,7 @@ function EditorWorkspace({
 	primary,
 	secondaryOne,
 	secondaryTwo,
+	projectFonts,
 }: {
 	projectTitle?: string;
 	projectUpdatedAt?: string;
@@ -80,33 +88,64 @@ function EditorWorkspace({
 	primary?: ProjectFontEntity;
 	secondaryOne?: ProjectFontEntity;
 	secondaryTwo?: ProjectFontEntity;
+	projectFonts?: ProjectFontEntity[];
 } = {}) {
 	const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 	const [templateCardId, setTemplateCardId] = useState<string | null>(null);
-	const [isGlyphViewerOpen, setIsGlyphViewerOpen] = useState(false);
-	const glyphFonts = useMemo(
+	const [fontManagerOpen, setFontManagerOpen] = useState(false);
+	const fontLabContext = useFontLabContextStore((state) => state.context);
+	const closeFontLab = useFontLabContextStore((state) => state.close);
+	const canvasFonts = useMemo(
 		() =>
-			[
-				primary
-					? { font: primary, role: "primary" as const, roleLabel: "Primary" }
-					: null,
-				secondaryOne
-					? {
-							font: secondaryOne,
-							role: "sec1" as const,
-							roleLabel: "Secondary one",
-						}
-					: null,
-				secondaryTwo
-					? {
-							font: secondaryTwo,
-							role: "sec2" as const,
-							roleLabel: "Secondary two",
-						}
-					: null,
-			].filter((option) => option !== null),
-		[primary, secondaryOne, secondaryTwo],
+			projectFonts ??
+			[primary, secondaryOne, secondaryTwo].filter(
+				(font): font is ProjectFontEntity => Boolean(font),
+			),
+		[primary, secondaryOne, secondaryTwo, projectFonts],
 	);
+
+	function closeOrReturn() {
+		const target = fontLabContext?.returnTarget;
+		closeFontLab();
+		if (!target?.cardId) return;
+		const state = useEditorStore.getState();
+		const card = state.cards.find(({ id }) => id === target.cardId);
+		if (!card) return;
+		if (target.nodeId && card.nodes.some(({ id }) => id === target.nodeId))
+			state.selectNode(card.id, target.nodeId);
+		else state.selectCard(card.id);
+		window.setTimeout(
+			() =>
+				document
+					.querySelector(`[data-card-id="${card.id}"]`)
+					?.scrollIntoView({ behavior: "smooth", block: "center" }),
+			0,
+		);
+	}
+
+	function pinTypeStudy(study: TypeLensStudy) {
+		const state = useEditorStore.getState();
+		const cardId = fontLabContext?.returnTarget?.cardId;
+		if (!cardId) return;
+		const nodeId = state.placeTypeStudy(cardId, study);
+		if (!nodeId) return;
+		closeFontLab();
+		window.setTimeout(
+			() =>
+				document
+					.querySelector(`[data-card-id="${cardId}"]`)
+					?.scrollIntoView({ behavior: "smooth", block: "center" }),
+			0,
+		);
+	}
+
+	function applyTypeLensFeatures(settings: FontFeatureSettings) {
+		const target = fontLabContext?.returnTarget;
+		if (!target?.cardId || !target.nodeId) return;
+		useEditorStore.getState().updateNode(target.cardId, target.nodeId, {
+			featureSettings: settings,
+		});
+	}
 
 	function fontStack(...fonts: Array<ProjectFontEntity | undefined>): string {
 		const names = fonts.flatMap((font) => {
@@ -119,6 +158,34 @@ function EditorWorkspace({
 	useEffect(() => {
 		useEditorStore.persist.rehydrate();
 	}, []);
+
+	useEffect(() => {
+		const url = new URL(window.location.href);
+		if (fontLabContext) url.searchParams.set("view", "type-lens");
+		else {
+			url.searchParams.set("view", "canvas");
+			url.searchParams.delete("typeLensMode");
+		}
+		window.history.replaceState(window.history.state, "", url);
+	}, [fontLabContext]);
+
+	useEffect(
+		() => () => {
+			useFontLabContextStore.getState().close();
+		},
+		[],
+	);
+
+	useEffect(() => {
+		useEditorStore
+			.getState()
+			.setProjectFonts(
+				projectFonts ??
+					[primary, secondaryOne, secondaryTwo].filter(
+						(font): font is ProjectFontEntity => Boolean(font),
+					),
+			);
+	}, [primary, secondaryOne, secondaryTwo, projectFonts]);
 
 	return (
 		<main
@@ -135,15 +202,24 @@ function EditorWorkspace({
 				} as React.CSSProperties
 			}
 		>
-			<EditorCanvas
-				projectTitle={projectTitle}
-				projectUpdatedAt={projectUpdatedAt}
-				onProjectTitleChange={onProjectTitleChange}
-				onToggleInspector={() => setIsInspectorOpen((isOpen) => !isOpen)}
-				onSelectNode={() => setIsInspectorOpen(true)}
-				onOpenTemplates={setTemplateCardId}
-				onOpenGlyphViewer={() => setIsGlyphViewerOpen(true)}
-			/>
+			{fontLabContext ? (
+				<TypeLens
+					fonts={canvasFonts}
+					launchContext={fontLabContext}
+					onClose={closeOrReturn}
+					onPinToCanvas={pinTypeStudy}
+					onFeatureSettingsChange={applyTypeLensFeatures}
+				/>
+			) : (
+				<EditorCanvas
+					projectTitle={projectTitle}
+					projectUpdatedAt={projectUpdatedAt}
+					onProjectTitleChange={onProjectTitleChange}
+					onToggleInspector={() => setIsInspectorOpen((isOpen) => !isOpen)}
+					onSelectNode={() => setIsInspectorOpen(true)}
+					onOpenTemplates={setTemplateCardId}
+				/>
+			)}
 			{templateCardId ? (
 				<TemplateSidebar
 					cardId={templateCardId}
@@ -155,12 +231,7 @@ function EditorWorkspace({
 					}}
 				/>
 			) : null}
-			<GlyphViewer
-				fonts={glyphFonts}
-				open={isGlyphViewerOpen}
-				onOpenChange={setIsGlyphViewerOpen}
-			/>
-			{isInspectorOpen ? (
+			{!fontLabContext && isInspectorOpen ? (
 				<EditorInspector
 					onClose={() => setIsInspectorOpen(false)}
 					fonts={{
@@ -169,7 +240,7 @@ function EditorWorkspace({
 						sec2: secondaryTwo,
 					}}
 				/>
-			) : (
+			) : !fontLabContext ? (
 				<Button
 					type="button"
 					aria-label="Open inspector"
@@ -180,7 +251,13 @@ function EditorWorkspace({
 				>
 					<PanelRightOpen />
 				</Button>
-			)}
+			) : null}
+			{!fontLabContext ? (
+				<FontSystemPanel
+					open={fontManagerOpen}
+					onOpenChange={setFontManagerOpen}
+				/>
+			) : null}
 		</main>
 	);
 }

@@ -109,8 +109,9 @@ describe("editor store", () => {
 		expect(cards[0]?.nodes).toHaveLength(2);
 		expect(cards[0]?.nodes[0]).toMatchObject({
 			type: "text",
-			color: "#046A63",
+			color: "#000000",
 			fontType: "primary",
+			fontSource: { type: "role", role: "primary" },
 			fontSize: 20,
 			lineHeight: 1.1,
 			letterSpacing: 0,
@@ -136,6 +137,30 @@ describe("editor store", () => {
 			},
 		});
 		expect(selectedNodeId).toBe(cards[0]?.nodes[1]?.id);
+	});
+
+	it("places a linked glyph study in the centre of its source card", () => {
+		const card = getCardAt(useEditorStore.getState().cards, 0);
+
+		const nodeId = useEditorStore
+			.getState()
+			.placeTypeStudy(card.id, { text: "&", role: "secondary-one" });
+
+		const { cards, selectedCardId, selectedNodeId } = useEditorStore.getState();
+		const study = cards[0]?.nodes.find(({ id }) => id === nodeId);
+		expect(study).toMatchObject({
+			id: nodeId,
+			type: "text",
+			text: "&",
+			fontType: "sec1",
+			fontSource: { type: "role", role: "secondary-one" },
+			textAlign: "center",
+			lineHeight: 1,
+			fontSize: 20,
+			color: "#000000",
+		});
+		expect(selectedCardId).toBe(card.id);
+		expect(selectedNodeId).toBe(nodeId);
 	});
 
 	it("offers exactly 200 categorized shapes and adds them as editable nodes", () => {
@@ -248,6 +273,13 @@ describe("editor store", () => {
 				({ card }) =>
 					card.settings.fill.type === "solid" &&
 					card.settings.aspectRatio === "4:5",
+			),
+		).toBe(true);
+		expect(
+			EDITOR_TEMPLATES.every(({ card }) =>
+				card.nodes.every(
+					(node) => node.type !== "text" || node.fontSource?.type === "role",
+				),
 			),
 		).toBe(true);
 		expect(
@@ -447,6 +479,54 @@ describe("editor store", () => {
 		);
 		useEditorStore.getState().undo(card.id);
 		expect(useEditorStore.getState().cards[0]?.nodes[0]?.x).toBe(24);
+	});
+
+	it("applies Font Lab browser settings to one node as one undo step", () => {
+		const card = getCardAt(useEditorStore.getState().cards, 0);
+		useEditorStore.getState().addTextNode(card.id);
+		const node = useEditorStore.getState().cards[0]?.nodes[0];
+		if (!node || node.type !== "text") throw new Error("Expected a text node");
+		useEditorStore.getState().applyBrowserFontSettings(
+			{ type: "selected-node", cardId: card.id, nodeId: node.id },
+			{
+				featureSettings: { ss01: true, liga: false },
+				variationSettings: { wght: 650 },
+				fontSize: 32,
+				lineHeight: 1.3,
+				letterSpacing: -0.5,
+			},
+		);
+		const applied = useEditorStore.getState().cards[0]?.nodes[0];
+		expect(applied).toMatchObject({
+			featureSettings: { ss01: true, liga: false },
+			variationSettings: { wght: 650 },
+			fontSize: 32,
+			lineHeight: 1.3,
+			letterSpacing: -0.5,
+		});
+		useEditorStore.getState().undo(card.id);
+		expect(useEditorStore.getState().cards[0]?.nodes[0]).not.toHaveProperty(
+			"featureSettings",
+		);
+	});
+
+	it("applies an explicit comparison font choice only to the source block", () => {
+		const card = getCardAt(useEditorStore.getState().cards, 0);
+		useEditorStore.getState().addTextNode(card.id);
+		const node = useEditorStore.getState().cards[0]?.nodes[0];
+		if (!node || node.type !== "text") throw new Error("Expected a text node");
+
+		useEditorStore.getState().setTextNodeFontSource(card.id, node.id, {
+			type: "font",
+			fontId: "comparison-font",
+		});
+
+		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
+			fontSource: { type: "font", fontId: "comparison-font" },
+			fontSize: node.fontSize,
+			lineHeight: node.lineHeight,
+			letterSpacing: node.letterSpacing,
+		});
 	});
 
 	it("selects the nearest card after deleting the selection", () => {

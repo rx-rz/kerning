@@ -20,6 +20,7 @@ type EditorNodeProps = {
 	cardHeight: number;
 	zoom: number;
 	node: EditorNodeData;
+	previewText?: string;
 	nodes: readonly EditorNodeData[];
 	isSelected: boolean;
 	layerIndex: number;
@@ -33,6 +34,7 @@ export function EditorNode({
 	cardHeight,
 	zoom,
 	node,
+	previewText,
 	nodes,
 	isSelected,
 	layerIndex,
@@ -296,6 +298,7 @@ export function EditorNode({
 				<TextNode
 					cardId={cardId}
 					node={node}
+					previewText={previewText}
 					isSelected={isSelected}
 					onSelect={selectNode}
 					onStartDragging={startDragging}

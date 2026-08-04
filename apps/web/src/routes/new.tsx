@@ -8,9 +8,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Info, Upload } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { API_ROUTES } from "#/api/api-routes";
 import { createFileMetadata } from "#/api/files/create";
 import { getFileUploadUrl } from "#/api/files/upload-url";
-import { API_ROUTES } from "#/api/api-routes";
 import { useCreateProjectApi } from "#/api/projects/create";
 import type { ProjectData } from "#/api/projects/types";
 import { queries } from "#/api/queries";
@@ -57,6 +57,7 @@ function RouteComponent() {
 	const [projectName, setProjectName] = useState("");
 	const [fonts, setFonts] = useState<FontFamilyMeta[]>([]);
 	const [isSubmittingProject, setIsSubmittingProject] = useState(false);
+	const [projectCreationError, setProjectCreationError] = useState<string>();
 	const [primaryFontId, setPrimaryFontId] = useState<string>();
 	const [secondaryFontOneId, setSecondaryFontOneId] = useState<string>();
 	const [secondaryFontTwoId, setSecondaryFontTwoId] = useState<string>();
@@ -156,6 +157,7 @@ function RouteComponent() {
 
 	const handleCreateProject = useCallback(async () => {
 		setIsSubmittingProject(true);
+		setProjectCreationError(undefined);
 		let createdProjectId: string | undefined;
 
 		try {
@@ -203,7 +205,11 @@ function RouteComponent() {
 					queryKey: queries.projects.list.queryKey,
 				});
 			}
-			throw error;
+			setProjectCreationError(
+				error instanceof Error
+					? error.message
+					: "Unable to create the project. Please try again.",
+			);
 		} finally {
 			setIsSubmittingProject(false);
 		}
@@ -254,6 +260,7 @@ function RouteComponent() {
 					previewState={previewState}
 					canCreateProject={Boolean(primaryFontId) && !projectNameError}
 					isCreatingProject={isSubmittingProject}
+					creationError={projectCreationError}
 					onBack={handleBackToSelection}
 					onCreateProject={handleCreateProject}
 				/>
@@ -415,6 +422,7 @@ function ConfirmProjectView({
 	previewState,
 	canCreateProject,
 	isCreatingProject,
+	creationError,
 	onBack,
 	onCreateProject,
 }: {
@@ -424,6 +432,7 @@ function ConfirmProjectView({
 	previewState: FontUploadPreviewState;
 	canCreateProject: boolean;
 	isCreatingProject: boolean;
+	creationError?: string;
 	onBack: () => void;
 	onCreateProject: () => void;
 }) {
@@ -463,6 +472,15 @@ function ConfirmProjectView({
 				</div>
 
 				<FontPreviewCard state={previewState} />
+
+				{creationError && (
+					<p
+						role="alert"
+						className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 font-sans text-sm text-destructive"
+					>
+						{creationError}
+					</p>
+				)}
 
 				<Button
 					type="button"
@@ -759,6 +777,7 @@ function createGoogleProjectFace(
 	const italic = variant.includes("italic");
 	const weightMatch = variant.match(/\d+/);
 	const weight = weightMatch ? Number(weightMatch[0]) : 400;
+	const weightAxis = font.axes?.find((axis) => axis.tag === "wght");
 	const extension = new URL(fileUrl).pathname.split(".").pop()?.toLowerCase();
 	const format = extension === "otf" ? "otf" : "ttf";
 	return {
@@ -770,10 +789,10 @@ function createGoogleProjectFace(
 		format,
 		kind: font.axes?.length ? "variable" : "static",
 		weight,
-		weightRange: font.axes?.find((axis) => axis.tag === "wght")
+		weightRange: weightAxis
 			? {
-					min: font.axes.find((axis) => axis.tag === "wght")!.min,
-					max: font.axes.find((axis) => axis.tag === "wght")!.max,
+					min: weightAxis.min,
+					max: weightAxis.max,
 				}
 			: undefined,
 		axes: font.axes,
@@ -824,13 +843,21 @@ async function uploadBlobToSignedUrl({
 	blob: Blob;
 	mimeType: string;
 }) {
-	const response = await fetch(url, {
-		method: "PUT",
-		headers: {
-			"Content-Type": mimeType,
-		},
-		body: blob,
-	});
+	let response: Response;
+
+	try {
+		response = await fetch(url, {
+			method: "PUT",
+			headers: {
+				"Content-Type": mimeType,
+			},
+			body: blob,
+		});
+	} catch {
+		throw new Error(
+			"Unable to reach font storage. Check your connection and try again.",
+		);
+	}
 
 	if (!response.ok) {
 		throw new Error(`Unable to upload font file (${response.status})`);

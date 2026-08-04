@@ -4,7 +4,9 @@ import {
 	AlignJustify,
 	AlignLeft,
 	AlignRight,
+	ChevronDown,
 	Crop,
+	FlaskConical,
 	Scan,
 } from "lucide-react";
 import { useId, useState } from "react";
@@ -14,16 +16,19 @@ import { ColorField } from "#/components/ui/color-field";
 import { Field, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "#/components/ui/select";
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "#/components/ui/popover";
 import { Slider } from "#/components/ui/slider";
 import { deleteEditorImage, replaceEditorImage } from "#/db/image-db";
 import { CardTextureInspector } from "#/features/editor/components/card-fill-inspector";
 import { InspectorSection } from "#/features/editor/components/inspector-section";
+import { TextFontLabActions } from "#/features/editor/components/typography/text-font-lab-actions";
+import {
+	CONTENT_STRESS_OPTIONS,
+	type ContentStressMode,
+} from "#/features/editor/lib/content-stress";
 import {
 	NODE_CARD_INSET,
 	useEditorStore,
@@ -61,13 +66,12 @@ export function NodeInspector({ card, node, fonts }: NodeInspectorProps) {
 	return (
 		<div className="space-y-3 px-4 py-5">
 			{node.type === "text" ? (
-				<TextSettings cardId={card.id} node={node} fonts={fonts} />
+				<TextSettings card={card} node={node} fonts={fonts} />
 			) : node.type === "image" ? (
 				<ImageSettings cardId={card.id} node={node} />
 			) : (
 				<ShapeSettings cardId={card.id} node={node} />
 			)}
-
 			<InspectorSection title="Layout">
 				<div className="space-y-2">
 					{(["x", "y", "width", "height"] as const).map((key) => (
@@ -145,24 +149,144 @@ function ShapeSettings({ cardId, node }: { cardId: string; node: ShapeNode }) {
 }
 
 function TextSettings({
-	cardId,
+	card,
 	node,
 	fonts,
 }: {
-	cardId: string;
+	card: EditorCard;
 	node: TextNode;
 	fonts?: Partial<Record<TextNode["fontType"], ProjectFontEntity>>;
 }) {
+	const cardId = card.id;
 	const updateNode = useEditorStore((state) => state.updateNode);
+	const setTextNodeFontSource = useEditorStore(
+		(state) => state.setTextNodeFontSource,
+	);
+	const fontSystem = useEditorStore((state) => state.fontSystem);
+	const projectFonts = useEditorStore((state) => state.projectFonts);
 	const fontRoles = [
-		{ value: "primary" as const, label: "Primary" },
-		{ value: "sec1" as const, label: "Secondary 1" },
-		{ value: "sec2" as const, label: "Secondary 2" },
+		{ value: "primary" as const, label: "Display" },
+		{ value: "sec1" as const, label: "Text" },
+		{ value: "sec2" as const, label: "Accent" },
 	];
+	const selectedRole =
+		node.fontSource?.type === "role"
+			? node.fontSource.role
+			: node.fontType === "sec1"
+				? "secondary-one"
+				: node.fontType === "sec2"
+					? "secondary-two"
+					: "primary";
+	const selectedRoleFontId = fontSystem.roles[selectedRole]?.fontId;
+	const selectedFont =
+		projectFonts.find(
+			(font) =>
+				font.dbId === selectedRoleFontId || font.id === selectedRoleFontId,
+		) ?? fonts?.[node.fontType];
+	const assignedFontName = (fontType: TextNode["fontType"]) => {
+		const role =
+			fontType === "sec1"
+				? "secondary-one"
+				: fontType === "sec2"
+					? "secondary-two"
+					: "primary";
+		const fontId = fontSystem.roles[role]?.fontId;
+		return (
+			projectFonts.find((font) => font.dbId === fontId || font.id === fontId)
+				?.family ?? fonts?.[fontType]?.family
+		);
+	};
+	const availableAxes = [
+		...(selectedFont?.axes ?? []),
+		...(selectedFont?.faces.flatMap((face) => face.axes ?? []) ?? []),
+	].filter(
+		(axis, index, axes) =>
+			axis.tag !== "wght" &&
+			axes.findIndex((item) => item.tag === axis.tag) === index,
+	);
+	function selectFontRole(value: TextNode["fontType"]) {
+		updateNode(cardId, node.id, { fontType: value });
+		setTextNodeFontSource(cardId, node.id, {
+			type: "role",
+			role:
+				value === "sec1"
+					? "secondary-one"
+					: value === "sec2"
+						? "secondary-two"
+						: "primary",
+		});
+	}
+	const contentStressPreview = useEditorStore((state) =>
+		state.contentStressPreview?.cardId === cardId &&
+		state.contentStressPreview.nodeId === node.id
+			? state.contentStressPreview
+			: null,
+	);
+	const setContentStressPreview = useEditorStore(
+		(state) => state.setContentStressPreview,
+	);
+	const contentStressMode: ContentStressMode =
+		contentStressPreview?.mode ?? "original";
 
 	return (
 		<>
 			<InspectorSection title="Content">
+				<Popover>
+					<PopoverTrigger asChild>
+						<button
+							type="button"
+							aria-label="Font role"
+							className="flex min-h-12 w-full items-center gap-2 rounded-lg border border-hairline bg-white px-3 text-xs"
+						>
+							<span className="mono-label text-muted-foreground">
+								Font role
+							</span>
+							<span className="ml-auto flex min-w-0 items-center gap-2 font-semibold">
+								<RoleSwatch value={node.fontType} />
+								<span className="truncate">
+									{assignedFontName(node.fontType) ??
+										fontRoles.find(({ value }) => value === node.fontType)
+											?.label}
+								</span>
+							</span>
+							<ChevronDown className="size-3" />
+						</button>
+					</PopoverTrigger>
+					<PopoverContent
+						align="end"
+						className="w-[var(--radix-popover-trigger-width)]"
+					>
+						<fieldset className="grid grid-cols-3 gap-1.5">
+							<legend className="sr-only">Font role</legend>
+							{fontRoles.map(({ value, label }) => (
+								<label key={value} className="cursor-pointer">
+									<input
+										type="radio"
+										name="text-font-role"
+										className="peer sr-only"
+										checked={node.fontType === value}
+										onChange={() => selectFontRole(value)}
+									/>
+									<span className="flex flex-col items-center gap-1 rounded-lg border border-hairline bg-white p-1.5 text-center text-[10px] font-semibold text-muted-foreground peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground">
+										<RoleSwatch value={value} large />
+										{label}
+									</span>
+								</label>
+							))}
+						</fieldset>
+					</PopoverContent>
+				</Popover>
+				<div className="grid grid-cols-2 gap-2">
+					<ContentStressSelect
+						value={contentStressMode}
+						onChange={(mode) =>
+							setContentStressPreview(
+								mode === "original" ? null : { cardId, nodeId: node.id, mode },
+							)
+						}
+					/>
+					<TextFontLabActions className="w-full" card={card} node={node} />
+				</div>
 				<Field className="relative space-y-0">
 					<FieldLabel
 						htmlFor="node-text"
@@ -180,40 +304,6 @@ function TextSettings({
 						}
 					/>
 				</Field>
-				<Field className="space-y-0">
-					<Select
-						value={node.fontType}
-						onValueChange={(fontType) =>
-							updateNode(cardId, node.id, {
-								fontType: fontType as TextNode["fontType"],
-							})
-						}
-					>
-						<SelectTrigger
-							id="node-font-role"
-							size="compact"
-							className="min-h-9 px-3 py-2 text-sm font-bold"
-						>
-							<span className="mono-label mr-auto text-muted-foreground">
-								Font role
-							</span>
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{fontRoles.map(({ value, label }) => (
-								<SelectItem
-									key={value}
-									value={value}
-									className="min-h-8 py-1.5 text-sm font-bold"
-								>
-									{fonts?.[value]?.family
-										? `${fonts[value].family} (${label})`
-										: label}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</Field>
 			</InspectorSection>
 			<InspectorSection title="Appearance">
 				<div className="space-y-2">
@@ -227,8 +317,44 @@ function TextSettings({
 						}
 					/>
 					<NumberField
+						id="node-font-weight"
+						label="Weight"
+						value={node.fontWeight}
+						min={100}
+						max={900}
+						step={100}
+						onChange={(value) =>
+							updateFinite(updateNode, cardId, node.id, "fontWeight", value)
+						}
+					/>
+					{availableAxes.map((axis) => (
+						<NumberField
+							key={axis.tag}
+							id={`node-axis-${axis.tag}`}
+							label={axis.name || axis.tag}
+							value={
+								node.variationSettings?.[axis.tag] ??
+								axis.defaultValue ??
+								axis.min
+							}
+							min={axis.min}
+							max={axis.max}
+							step={(axis.max - axis.min) / 100}
+							onChange={(value) => {
+								const parsed = Number(value);
+								if (!Number.isFinite(parsed)) return;
+								updateNode(cardId, node.id, {
+									variationSettings: {
+										...node.variationSettings,
+										[axis.tag]: parsed,
+									},
+								});
+							}}
+						/>
+					))}
+					<NumberField
 						id="node-line-height"
-						label="Line height"
+						label="Leading"
 						value={node.lineHeight}
 						min={0.5}
 						max={5}
@@ -239,7 +365,7 @@ function TextSettings({
 					/>
 					<NumberField
 						id="node-letter-spacing"
-						label="Letter spacing"
+						label="Tracking"
 						value={node.letterSpacing}
 						min={-20}
 						max={100}
@@ -501,7 +627,13 @@ function updateFinite(
 	updateNode: (cardId: string, nodeId: string, patch: EditorNodePatch) => void,
 	cardId: string,
 	nodeId: string,
-	key: "fontSize" | "lineHeight" | "letterSpacing" | "strokeWidth" | "rotation",
+	key:
+		| "fontSize"
+		| "fontWeight"
+		| "lineHeight"
+		| "letterSpacing"
+		| "strokeWidth"
+		| "rotation",
 	value: string,
 ) {
 	const parsedValue = Math.round(Number(value) * 100) / 100;
@@ -547,6 +679,119 @@ function NumberField({
 				onChange={(event) => onChange(event.target.value)}
 			/>
 		</Field>
+	);
+}
+
+function ContentStressSelect({
+	value,
+	onChange,
+}: {
+	value: ContentStressMode;
+	onChange: (value: ContentStressMode) => void;
+}) {
+	const name = useId();
+	const selected = CONTENT_STRESS_OPTIONS.find(
+		(option) => option.mode === value,
+	);
+
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					aria-label={`Content stress: ${selected?.label}`}
+					className="flex min-h-10 min-w-0 items-center gap-2 rounded-lg bg-white px-2.5 text-left text-[10px] font-semibold shadow-[inset_0_0_0_1px_var(--line-hair)] transition-colors hover:bg-muted"
+				>
+					<ContentStressSwatch mode={value} />
+					<span className="min-w-0 flex-1 truncate">
+						{value === "original" ? "Content stress" : selected?.label}
+					</span>
+					<ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+				</button>
+			</PopoverTrigger>
+			<PopoverContent align="start" className="w-80">
+				<div className="px-1 pb-2">
+					<p className="text-xs font-semibold">Content stress</p>
+					<p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+						Preview test copy on this text node only.
+					</p>
+				</div>
+				<fieldset className="grid grid-cols-2 gap-1.5">
+					<legend className="sr-only">Content stress</legend>
+					{CONTENT_STRESS_OPTIONS.map((option) => (
+						<label key={option.mode} className="cursor-pointer">
+							<input
+								type="radio"
+								name={name}
+								value={option.mode}
+								checked={value === option.mode}
+								className="peer sr-only"
+								onChange={() => onChange(option.mode)}
+							/>
+							<span className="flex min-h-[5.25rem] flex-col gap-1 rounded-lg border border-hairline bg-white p-1.5 text-left text-[10px] text-muted-foreground peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground">
+								<ContentStressSwatch mode={option.mode} large />
+								<span className="font-semibold">{option.label}</span>
+								<span className="leading-3.5">{option.description}</span>
+							</span>
+						</label>
+					))}
+				</fieldset>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+function ContentStressSwatch({
+	mode,
+	large = false,
+}: {
+	mode: ContentStressMode;
+	large?: boolean;
+}) {
+	const sample =
+		mode === "original"
+			? "Aa"
+			: mode === "long-headline"
+				? "A long headline"
+				: mode === "dense-paragraph"
+					? "Text text text"
+					: mode === "all-caps"
+						? "ABC"
+						: "12/34";
+
+	return (
+		<span
+			aria-hidden="true"
+			className={
+				large
+					? "flex h-8 w-full items-center overflow-hidden rounded-md border border-hairline bg-primary/5 px-2 font-mono text-[9px] font-bold"
+					: "flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-md border border-hairline bg-primary/5 px-1 font-mono text-[8px] font-bold"
+			}
+		>
+			{mode === "original" ? <FlaskConical className="size-3" /> : sample}
+		</span>
+	);
+}
+
+function RoleSwatch({
+	value,
+	large = false,
+}: {
+	value: TextNode["fontType"];
+	large?: boolean;
+}) {
+	return (
+		<span
+			aria-hidden="true"
+			className={
+				large
+					? "flex size-12 items-center justify-center rounded-md border border-hairline bg-primary/5 text-xl"
+					: "flex size-7 items-center justify-center rounded-md border border-hairline bg-primary/5 text-sm"
+			}
+			style={{ fontFamily: `var(--font-project-${value})` }}
+		>
+			Aa
+		</span>
 	);
 }
 

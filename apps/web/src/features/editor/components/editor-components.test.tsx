@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { ProjectFontEntity } from "@kerning/shared";
 import {
 	act,
 	cleanup,
@@ -13,6 +14,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorCanvas } from "#/features/editor/components/editor-canvas";
 import { EditorInspector } from "#/features/editor/components/editor-inspector";
 import { EditorPage } from "#/features/editor/components/editor-page";
+import {
+	DEFAULT_OVERLAYS,
+	GlyphMetricsPreview,
+} from "#/features/editor/components/glyph-metrics-preview";
+import { TypeLens } from "#/features/editor/components/type-lens";
+import { useFontLabContextStore } from "#/features/editor/font-lab-bridge/font-lab-context.store";
 import { DEFAULT_PAPER_SETTINGS } from "#/features/editor/lib/card-fill";
 import {
 	EDITOR_SESSION_STORAGE_KEY,
@@ -34,6 +41,65 @@ function renderEditorParts() {
 			<EditorInspector onClose={() => {}} />
 		</>,
 	);
+}
+
+const displayFont = {
+	id: "display-font",
+	dbId: "display-font",
+	family: "Canvas Display",
+	cssFamily: "Canvas Display",
+	role: "primary",
+	axes: [],
+	faces: [],
+} as unknown as ProjectFontEntity;
+const alternateDisplayFont = {
+	...displayFont,
+	id: "alternate-display-font",
+	dbId: "alternate-display-font",
+	family: "Alternate Display",
+	cssFamily: "Alternate Display",
+} as unknown as ProjectFontEntity;
+const textFont = {
+	...displayFont,
+	id: "text-font",
+	dbId: "text-font",
+	family: "Canvas Text",
+	cssFamily: "Canvas Text",
+	role: "secondary-one",
+} as unknown as ProjectFontEntity;
+const accentFont = {
+	...displayFont,
+	id: "accent-font",
+	dbId: "accent-font",
+	family: "Canvas Accent",
+	cssFamily: "Canvas Accent",
+	role: "secondary-two",
+} as unknown as ProjectFontEntity;
+
+function prepareRoleLinkedText(
+	role: "primary" | "secondary-one" | "secondary-two" = "primary",
+	text = "AVENUE",
+) {
+	const state = useEditorStore.getState();
+	state.setProjectFonts([displayFont]);
+	state.assignFontToRole(role, displayFont.dbId);
+	const card = state.cards[0];
+	if (!card) throw new Error("Expected a card");
+	state.addTextNode(card.id);
+	const node = useEditorStore.getState().cards[0]?.nodes[0];
+	if (!node) throw new Error("Expected a text node");
+	state.updateNode(card.id, node.id, {
+		text,
+		fontType:
+			role === "secondary-one"
+				? "sec1"
+				: role === "secondary-two"
+					? "sec2"
+					: "primary",
+		fontSource: { type: "role", role },
+	});
+	state.selectNode(card.id, node.id);
+	return { cardId: card.id, nodeId: node.id };
 }
 
 describe("editor components", () => {
@@ -69,6 +135,7 @@ describe("editor components", () => {
 			},
 		);
 		useEditorStore.getState().resetEditor();
+		useFontLabContextStore.getState().close();
 	});
 
 	afterEach(() => {
@@ -84,18 +151,208 @@ describe("editor components", () => {
 		expect(screen.getByLabelText("Card Name")).toBeTruthy();
 	});
 
-	it("opens the system glyph viewer and updates its preview", () => {
+	it("opens the Type Lens from selected Canvas text with source context", () => {
 		render(<EditorPage />);
-		fireEvent.click(screen.getByRole("button", { name: "Open glyph viewer" }));
+		let target = { cardId: "", nodeId: "" };
+		act(() => {
+			target = prepareRoleLinkedText("primary", "AVENUE");
+			useFontLabContextStore.getState().setEditorSelection({
+				...target,
+				start: 0,
+				end: 1,
+				text: "A",
+			});
+		});
+		const { cardId, nodeId } = target;
 
-		expect(screen.getByRole("dialog", { name: "Glyph viewer" })).toBeTruthy();
-		expect(screen.getByLabelText("Available glyphs")).toBeTruthy();
-		fireEvent.click(
-			screen.getByRole("button", { name: "Select A, Unicode 0041" }),
+		fireEvent.click(screen.getByRole("button", { name: "Open Type Lens" }));
+
+		const typeLens = screen.getByRole("region", { name: "Type Lens" });
+		expect(typeLens.textContent).toContain("AVENUE");
+		expect(useFontLabContextStore.getState().context).toMatchObject({
+			surface: "word",
+			source: { type: "text-node", cardId, nodeId },
+			role: "primary",
+			sampleText: "AVENUE",
+			selectedCodePoint: 65,
+			selectedWord: "AVENUE",
+			returnTarget: { cardId, nodeId },
+		});
+	});
+
+	it("compares the three role fonts while keeping at least one active", () => {
+		render(
+			<TypeLens
+				fonts={[displayFont, textFont, accentFont]}
+				launchContext={{
+					surface: "word",
+					source: { type: "standalone" },
+					role: "primary",
+					fontId: displayFont.dbId,
+					sampleText: "AVENUE",
+					selectedWord: "AVENUE",
+				}}
+				onClose={() => {}}
+				onPinToCanvas={() => {}}
+			/>,
 		);
+
 		expect(
-			screen.getByLabelText("Selected glyph preview").textContent,
-		).toContain("A");
+			screen.getByRole("button", { name: "Show Canvas Text" }),
+		).toBeTruthy();
+		fireEvent.click(
+			screen.getByRole("button", { name: "Hide Canvas Display" }),
+		);
+
+		expect(
+			screen
+				.getByRole("button", { name: "Hide Canvas Display" })
+				.getAttribute("aria-pressed"),
+		).toBe("true");
+
+		fireEvent.click(screen.getByRole("button", { name: "Show Canvas Text" }));
+		fireEvent.click(
+			screen.getByRole("button", { name: "Hide Canvas Display" }),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "Hide Canvas Text" }));
+		expect(
+			screen
+				.getByRole("button", { name: "Hide Canvas Text" })
+				.getAttribute("aria-pressed"),
+		).toBe("true");
+		expect(screen.getByRole("radio", { name: "Stack" })).toBeTruthy();
+		expect(screen.getByRole("radio", { name: "Side by side" })).toBeTruthy();
+		expect(
+			screen
+				.getByRole("button", { name: "Bounding box" })
+				.getAttribute("aria-pressed"),
+		).toBe("true");
+		expect(
+			screen
+				.getByRole("button", { name: "Metric guides" })
+				.getAttribute("aria-pressed"),
+		).toBe("false");
+	});
+
+	it("keeps a single glyph preview constrained by its available height", () => {
+		render(
+			<div className="flex h-96">
+				<GlyphMetricsPreview
+					entries={[undefined]}
+					metrics={{
+						ascender: 800,
+						capHeight: 700,
+						xHeight: 500,
+						descender: -200,
+					}}
+					slots={["display"]}
+					loaded={{}}
+					overlays={DEFAULT_OVERLAYS}
+					onOverlaysChange={() => {}}
+					systemCharacter="M"
+					primaryFontFamily="system-ui"
+					showControls={false}
+					showInformation={false}
+				/>
+			</div>,
+		);
+
+		const svg = screen.getByLabelText("Selected glyph preview");
+		expect(svg.parentElement?.classList.contains("h-0")).toBe(true);
+		expect(svg.parentElement?.classList.contains("overflow-hidden")).toBe(true);
+		expect(svg.classList.contains("max-h-full")).toBe(true);
+	});
+
+	it("pins the full selected word back into its originating Canvas card", () => {
+		render(<EditorPage />);
+		let target = { cardId: "", nodeId: "" };
+		act(() => {
+			target = prepareRoleLinkedText("primary", "AVENUE");
+			useFontLabContextStore.getState().setEditorSelection({
+				...target,
+				start: 0,
+				end: 2,
+				text: "AV",
+			});
+		});
+		const { cardId } = target;
+		fireEvent.click(screen.getByRole("button", { name: "Open Type Lens" }));
+		fireEvent.click(screen.getByRole("button", { name: "Pin to Canvas" }));
+
+		expect(screen.getByLabelText("Editor preview")).toBeTruthy();
+		expect(useEditorStore.getState().cards[0]?.nodes.at(-1)).toMatchObject({
+			type: "text",
+			text: "AVENUE",
+			fontSize: 20,
+			color: "#000000",
+			textAlign: "center",
+		});
+		expect(useEditorStore.getState().selectedCardId).toBe(cardId);
+		expect(useEditorStore.getState().selectedNodeId).toBe(
+			useEditorStore.getState().cards[0]?.nodes.at(-1)?.id,
+		);
+	});
+
+	it("retains the selected font role on a pinned type study", () => {
+		render(<EditorPage />);
+		act(() => {
+			prepareRoleLinkedText("secondary-two", "Ampersand &");
+		});
+		fireEvent.click(screen.getByRole("button", { name: "Open Type Lens" }));
+		fireEvent.click(screen.getByRole("radio", { name: "Glyph" }));
+		fireEvent.click(screen.getByRole("button", { name: "Select &" }));
+		fireEvent.click(screen.getByRole("button", { name: "Pin to Canvas" }));
+
+		expect(useEditorStore.getState().cards[0]?.nodes.at(-1)).toMatchObject({
+			type: "text",
+			text: "&",
+			fontType: "sec2",
+			fontSource: { type: "role", role: "secondary-two" },
+			textAlign: "center",
+		});
+	});
+
+	it("updates role-linked Canvas text when its Font System assignment changes", () => {
+		const state = useEditorStore.getState();
+		state.setProjectFonts([displayFont, alternateDisplayFont]);
+		state.assignFontToRole("primary", displayFont.dbId);
+		const card = state.cards[0];
+		if (!card) throw new Error("Expected a card");
+		state.addTextNode(card.id);
+		renderEditorParts();
+
+		expect(screen.getByLabelText("Edit text node").style.fontFamily).toContain(
+			"Canvas Display",
+		);
+		act(() => {
+			useEditorStore
+				.getState()
+				.assignFontToRole("primary", alternateDisplayFont.dbId);
+		});
+		expect(screen.getByLabelText("Edit text node").style.fontFamily).toContain(
+			"Alternate Display",
+		);
+	});
+
+	it("changes a text node role from the Content swatch selector", () => {
+		let target = { cardId: "", nodeId: "" };
+		act(() => {
+			target = prepareRoleLinkedText("primary");
+		});
+		renderEditorParts();
+
+		fireEvent.click(screen.getByRole("button", { name: "Font role" }));
+		fireEvent.click(screen.getByRole("radio", { name: "Text" }));
+
+		const node = useEditorStore
+			.getState()
+			.cards.find(({ id }) => id === target.cardId)
+			?.nodes.find(({ id }) => id === target.nodeId);
+		expect(node).toMatchObject({
+			type: "text",
+			fontType: "sec1",
+			fontSource: { type: "role", role: "secondary-one" },
+		});
 	});
 
 	it("updates the selected card from inspector controls", () => {
@@ -300,10 +557,13 @@ describe("editor components", () => {
 		fireEvent.change(screen.getByLabelText("Size"), {
 			target: { value: "32" },
 		});
-		fireEvent.change(screen.getByLabelText("Line height"), {
+		fireEvent.change(screen.getByLabelText("Weight"), {
+			target: { value: "600" },
+		});
+		fireEvent.change(screen.getByLabelText("Leading"), {
 			target: { value: "1.5" },
 		});
-		fireEvent.change(screen.getByLabelText("Letter spacing"), {
+		fireEvent.change(screen.getByLabelText("Tracking"), {
 			target: { value: "2.5" },
 		});
 
@@ -311,6 +571,7 @@ describe("editor components", () => {
 		expect(node).toMatchObject({
 			type: "text",
 			fontSize: 32,
+			fontWeight: 600,
 			lineHeight: 1.5,
 			letterSpacing: 2.5,
 		});
@@ -320,7 +581,7 @@ describe("editor components", () => {
 		expect(textArea.style.lineHeight).toBe("1.5");
 		expect(textArea.style.letterSpacing).toBe("2.5px");
 		expect(screen.queryByText("Font type")).toBeNull();
-		expect(screen.queryByText("Weight")).toBeNull();
+		expect(screen.getByLabelText("Weight")).toBeTruthy();
 	});
 
 	it("updates text color from the picker and valid hex edits", () => {
@@ -947,6 +1208,7 @@ describe("editor components", () => {
 
 	it("edits the project title and toggles the card drag lock", () => {
 		const onProjectTitleChange = vi.fn();
+		act(() => useEditorStore.getState().selectCard(null));
 		render(
 			<EditorCanvas
 				projectTitle="Brand exploration"
@@ -960,6 +1222,9 @@ describe("editor components", () => {
 		expect(onProjectTitleChange).toHaveBeenCalledWith("Launch campaign");
 		expect(screen.getByText(/^Last edited /).textContent).not.toBe(
 			"Last edited —",
+		);
+		fireEvent.click(
+			screen.getByRole("button", { name: "Go to Untitled Card" }),
 		);
 
 		const cardName = screen.getByRole("textbox", { name: "Card name" });
@@ -977,6 +1242,145 @@ describe("editor components", () => {
 		expect(screen.getByRole("tooltip").textContent).toContain(
 			"prevent dragging between cards",
 		);
+	});
+
+	it("previews content stress copy without changing the saved card", () => {
+		const card = useEditorStore.getState().cards[0];
+		if (!card) throw new Error("Expected a card");
+		act(() => {
+			useEditorStore.getState().addTextNode(card.id);
+			useEditorStore.getState().addTextNode(card.id);
+		});
+		const [node, otherNode] = useEditorStore.getState().cards[0]?.nodes ?? [];
+		if (!node || !otherNode) throw new Error("Expected two text nodes");
+		act(() => {
+			useEditorStore
+				.getState()
+				.updateNode(card.id, node.id, { text: "A mixed Case title" });
+			useEditorStore
+				.getState()
+				.updateNode(card.id, otherNode.id, { text: "Leave this copy alone" });
+			useEditorStore.getState().selectNode(card.id, node.id);
+		});
+		renderEditorParts();
+
+		fireEvent.click(
+			screen.getByRole("button", { name: "Content stress: Original copy" }),
+		);
+		fireEvent.click(screen.getByRole("radio", { name: /All caps/ }));
+
+		const [textNode, otherTextNode] =
+			screen.getAllByLabelText("Edit text node");
+		expect(textNode).toHaveProperty("value", "A MIXED CASE TITLE");
+		expect(otherTextNode).toHaveProperty("value", "Leave this copy alone");
+		expect(textNode.getAttribute("data-content-stress-preview")).toBe("true");
+		expect(
+			otherTextNode.getAttribute("data-content-stress-preview"),
+		).toBeNull();
+		expect(useEditorStore.getState().cards[0]?.nodes).toMatchObject([
+			{ text: "A mixed Case title" },
+			{ text: "Leave this copy alone" },
+		]);
+
+		act(() => {
+			useEditorStore.getState().addCard();
+		});
+		act(() => {
+			useEditorStore.getState().selectCard(card.id);
+			useEditorStore.getState().selectNode(card.id, node.id);
+		});
+		expect(screen.getAllByLabelText("Edit text node")[0]).toHaveProperty(
+			"value",
+			"A mixed Case title",
+		);
+		expect(
+			screen.getByRole("button", { name: "Content stress: Original copy" }),
+		).toBeTruthy();
+	});
+
+	it("renders glance, width, and contrast proofs without mutating the card", () => {
+		const card = useEditorStore.getState().cards[0];
+		if (!card) throw new Error("Expected a card");
+		const originalWidth = card.width;
+		act(() => useEditorStore.getState().addCard());
+		const otherCard = useEditorStore.getState().cards[1];
+		if (!otherCard) throw new Error("Expected another card");
+		act(() => useEditorStore.getState().selectCard(card.id));
+
+		renderEditorParts();
+		expect(
+			document.querySelector(`[data-card-id="${otherCard.id}"]`),
+		).toBeTruthy();
+
+		fireEvent.click(
+			screen.getByRole("button", { name: "Canvas proofs: Original view" }),
+		);
+		fireEvent.click(screen.getByRole("radio", { name: /Width proof/ }));
+
+		expect(screen.getByRole("region", { name: "Width proof" })).toBeTruthy();
+		expect(
+			document.querySelector(`[data-card-id="${otherCard.id}"]`),
+		).toBeNull();
+		expect(screen.getByRole("button", { name: "Zoom out" })).toHaveProperty(
+			"disabled",
+			true,
+		);
+		expect(screen.getByRole("button", { name: "Zoom in" })).toHaveProperty(
+			"disabled",
+			true,
+		);
+		expect(
+			screen.getByRole("button", {
+				name: "Zoom unavailable during canvas proof",
+			}),
+		).toHaveProperty("disabled", true);
+		expect(document.querySelectorAll('[data-card-proof="true"]')).toHaveLength(
+			3,
+		);
+		expect(screen.getByText(/Compact ·/)).toBeTruthy();
+		expect(screen.getByText(/Current ·/)).toBeTruthy();
+		expect(screen.getByText(/Wide ·/)).toBeTruthy();
+		expect(useEditorStore.getState().cards[0]?.width).toBe(originalWidth);
+
+		fireEvent.click(screen.getByRole("radio", { name: /Contrast proof/ }));
+
+		expect(screen.getByRole("region", { name: "Contrast proof" })).toBeTruthy();
+		expect(document.querySelectorAll('[data-card-proof="true"]')).toHaveLength(
+			4,
+		);
+		expect(screen.getByText("Light")).toBeTruthy();
+		expect(screen.getByText("Dark")).toBeTruthy();
+		expect(screen.getByText("Image")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("radio", { name: /Glance test/ }));
+
+		expect(
+			screen.getByText("Glance test · blurred thumbnail distance"),
+		).toBeTruthy();
+		expect(document.querySelectorAll('[data-card-proof="true"]')).toHaveLength(
+			1,
+		);
+		expect(
+			document
+				.querySelector('[data-card-proof="true"]')
+				?.getAttribute("data-card-zoom"),
+		).toBe("0.4");
+		expect(
+			document
+				.querySelector('[data-card-proof="true"]')
+				?.getAttribute("data-card-proof-blur"),
+		).toBe("2.5");
+
+		act(() => useEditorStore.getState().addCard());
+
+		expect(document.querySelector('[data-card-proof="true"]')).toBeNull();
+		expect(
+			screen.getByRole("button", { name: "Canvas proofs: Original view" }),
+		).toBeTruthy();
+		expect(
+			document.querySelector(`[data-card-id="${otherCard.id}"]`),
+		).toBeTruthy();
+		expect(useEditorStore.getState().cards[0]?.width).toBe(originalWidth);
 	});
 
 	it("moves between cards with wheel scrolling", () => {

@@ -28,6 +28,9 @@ type EditorCardProps = {
 	card: EditorCardData;
 	zoom: number;
 	isSelected: boolean;
+	isInteractive?: boolean;
+	proofBlur?: number;
+	contentStressPreview?: ReadonlyMap<string, string>;
 	onSelect: (id: string) => void;
 	onToggleSettings?: () => void;
 	onSelectNode?: () => void;
@@ -39,6 +42,9 @@ export function EditorCard({
 	card,
 	zoom,
 	isSelected,
+	isInteractive = true,
+	proofBlur = 0,
+	contentStressPreview,
 	onSelect,
 	onToggleSettings,
 	onSelectNode,
@@ -61,12 +67,25 @@ export function EditorCard({
 		<div
 			data-card-id={card.id}
 			data-card-zoom={zoom}
+			data-card-proof={isInteractive ? undefined : true}
+			data-card-proof-blur={proofBlur || undefined}
+			aria-hidden={isInteractive ? undefined : true}
+			inert={isInteractive ? undefined : true}
 			className="relative shrink-0 border-px"
 			style={{
 				width: card.width * zoom,
 				height: card.height * zoom,
 			}}
 		>
+			{isInteractive &&
+			card.fontSystemOverrides?.roles &&
+			Object.keys(card.fontSystemOverrides.roles).length ? (
+				<output
+					className="absolute -top-2 -right-2 z-30 size-3 rounded-full border-2 border-background bg-amber-500"
+					aria-label="Card typography override active"
+					title="Card typography override active"
+				/>
+			) : null}
 			<div
 				className={cn(
 					"relative cursor-default overflow-hidden border border-hairline bg-white p-0 text-left shadow-[0_10px_30px_rgba(15,23,42,0.10)] outline-none transition-[outline-color,box-shadow] duration-150",
@@ -77,7 +96,7 @@ export function EditorCard({
 					height: card.height,
 					...getCardFillStyle(card.settings.fill),
 					opacity: card.settings.opacity,
-					filter: `blur(${card.settings.blur}px)`,
+					filter: `blur(${card.settings.blur + proofBlur}px)`,
 					borderWidth: card.settings.borderWidth,
 					borderStyle: card.settings.borderStyle,
 					borderColor: card.settings.borderColor,
@@ -93,16 +112,18 @@ export function EditorCard({
 				{card.settings.fill.type === "image" ? (
 					<CardImageFill fill={card.settings.fill} />
 				) : null}
-				<button
-					type="button"
-					aria-label={`Select ${card.name}`}
-					aria-pressed={isSelected}
-					className="absolute inset-0 size-full border-0 bg-transparent"
-					onClick={(event) => {
-						event.stopPropagation();
-						onSelect(card.id);
-					}}
-				/>
+				{isInteractive ? (
+					<button
+						type="button"
+						aria-label={`Select ${card.name}`}
+						aria-pressed={isSelected}
+						className="absolute inset-0 size-full border-0 bg-transparent"
+						onClick={(event) => {
+							event.stopPropagation();
+							onSelect(card.id);
+						}}
+					/>
+				) : null}
 				{card.nodes.map((node, index) => (
 					<EditorNode
 						key={node.id}
@@ -112,7 +133,10 @@ export function EditorCard({
 						zoom={zoom}
 						node={node}
 						nodes={card.nodes}
-						isSelected={node.id === selectedNodeId}
+						isSelected={
+							isInteractive && isSelected && node.id === selectedNodeId
+						}
+						previewText={contentStressPreview?.get(node.id)}
 						layerIndex={index}
 						onSelect={handleSelectNode}
 						onGuidesChange={setSmartGuides}
@@ -120,7 +144,7 @@ export function EditorCard({
 				))}
 				<SmartGuideOverlay guides={smartGuides} />
 			</div>
-			{isSelected ? (
+			{isInteractive && isSelected ? (
 				<div className="card-control-tray absolute -top-3 left-0 z-30 -translate-y-full">
 					<button
 						type="button"

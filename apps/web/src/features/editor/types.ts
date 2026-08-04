@@ -1,3 +1,10 @@
+import type {
+	FontFeatureSettings,
+	FontVariationSettings,
+	ProjectFontRole,
+	TextFontSource,
+} from "#/features/editor/font-system/font-system.types";
+
 export type CardAspectRatio =
 	| "1:1"
 	| "4:5"
@@ -134,6 +141,8 @@ type BaseNode = {
 	width: number;
 	height: number;
 	rotation?: NodeRotation;
+	/** Stable semantic identity shared by corresponding nodes in comparison cards. */
+	linkedNodeKey?: string;
 };
 
 export type NodePosition = { x: number; y: number };
@@ -143,6 +152,11 @@ export type TextNode = BaseNode & {
 	type: "text";
 	text: string;
 	fontType: FontType;
+	/** Semantic role or explicit font reference. fontType remains as a legacy fallback. */
+	fontSource?: TextFontSource;
+	/** Browser-applicable node-only overrides. Role linkage remains intact. */
+	featureSettings?: FontFeatureSettings;
+	variationSettings?: FontVariationSettings;
 	fontSize: number;
 	fontWeight: number;
 	lineHeight: number;
@@ -206,4 +220,76 @@ export type EditorCard = {
 	height: number;
 	settings: CardSettings;
 	nodes: EditorNode[];
+	scenario?: CardScenarioMetadata;
+	comparisonLabel?: string;
+	fontSystemOverrides?: CardFontSystemOverrides;
+};
+
+export type TypographyScenarioCategory =
+	| "display"
+	| "editorial"
+	| "product-ui"
+	| "identity"
+	| "technical";
+
+export type TypographyStressTest =
+	| "display-size"
+	| "small-size"
+	| "dense-copy"
+	| "long-form"
+	| "all-caps"
+	| "mixed-case"
+	| "numerals"
+	| "punctuation"
+	| "kerning"
+	| "variable-axes"
+	| "open-type-features"
+	| "multilingual"
+	| "image-overlay"
+	| "narrow-container"
+	| "wide-container";
+
+export type CardScenarioMetadata = {
+	scenarioId: string;
+	scenarioName: string;
+	category: TypographyScenarioCategory;
+	stressTests: TypographyStressTest[];
+};
+
+export type CardFontRoleOverride = {
+	fontId?: string;
+	variantId?: string;
+	featureSettings?: FontFeatureSettings;
+	variationSettings?: FontVariationSettings;
+};
+
+export type CardFontSystemOverrides = {
+	roles?: Partial<Record<ProjectFontRole, CardFontRoleOverride>>;
+};
+
+export type LinkedCardGroupMode =
+	| "font-assignment"
+	| "role-swap"
+	| "font-variant"
+	| "feature-settings"
+	| "variation-settings"
+	| "size-normalization"
+	| "original-vs-modified";
+
+export type LinkedCardSyncSettings = {
+	content: boolean;
+	layout: boolean;
+	images: boolean;
+	cardStyle: boolean;
+	typographyStructure: boolean;
+};
+
+export type LinkedCardGroup = {
+	id: string;
+	name: string;
+	scenarioId?: string;
+	cardIds: string[];
+	sourceCardId: string;
+	mode: LinkedCardGroupMode;
+	sync: LinkedCardSyncSettings;
 };

@@ -6,6 +6,10 @@ import { env } from "../lib/env.js";
 export const r2Client = new S3Client({
   region: "auto",
   endpoint: env.CLOUDFLARE_ENDPOINT || "http://localhost",
+  // PutObject supports checksums, so recent AWS SDK versions otherwise add the
+  // CRC32 of an empty body while presigning. The browser supplies the body
+  // later, which makes R2 reject the upload because that checksum cannot match.
+  requestChecksumCalculation: "WHEN_REQUIRED",
   credentials: {
     accessKeyId: env.CLOUDFLARE_ACCESS_KEY_ID || "missing",
     secretAccessKey: env.CLOUDFLARE_SECRET_ACCESS_KEY || "missing",

@@ -1,4 +1,5 @@
 import { ChevronDown } from "lucide-react";
+import { Button } from "#/components/ui/button";
 import { ColorField } from "#/components/ui/color-field";
 import { Field, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
@@ -47,6 +48,16 @@ export function CardInspector({ card }: CardInspectorProps) {
 	const updateCardSettings = useEditorStore(
 		(state) => state.updateCardSettings,
 	);
+	const detachCardFromScenario = useEditorStore(
+		(state) => state.detachCardFromScenario,
+	);
+	const group = useEditorStore((state) =>
+		state.linkedCardGroups.find(({ cardIds }) => cardIds.includes(card.id)),
+	);
+	const unlinkCard = useEditorStore((state) => state.unlinkCard);
+	const dissolveLinkedGroup = useEditorStore(
+		(state) => state.dissolveLinkedGroup,
+	);
 
 	function updateNumericValue(key: NumericCardKey, value: string) {
 		const parsedValue = Number(value);
@@ -65,6 +76,61 @@ export function CardInspector({ card }: CardInspectorProps) {
 
 	return (
 		<div className="space-y-3 px-4 py-5">
+			{card.scenario ? (
+				<section className="rounded-xl border border-hairline bg-surface-wash p-3">
+					<p className="text-xs font-semibold">{card.scenario.scenarioName}</p>
+					<p className="mt-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+						Stress tests
+					</p>
+					<div className="mt-1 flex flex-wrap gap-1">
+						{card.scenario.stressTests.map((test) => (
+							<span
+								key={test}
+								className="rounded-full bg-black/5 px-2 py-1 text-[8px]"
+							>
+								{test.replaceAll("-", " ")}
+							</span>
+						))}
+					</div>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						className="mt-2"
+						onClick={() => detachCardFromScenario(card.id)}
+					>
+						Detach scenario metadata
+					</Button>
+				</section>
+			) : null}
+			{group ? (
+				<section className="rounded-xl border border-hairline p-3">
+					<p className="text-xs font-semibold">
+						{group.name} · {group.cardIds.length} variants
+					</p>
+					<p className="mt-1 text-[9px] uppercase text-muted-foreground">
+						{group.mode.replaceAll("-", " ")}
+					</p>
+					<div className="mt-2 flex gap-1">
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => unlinkCard(card.id)}
+						>
+							Unlink card
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => dissolveLinkedGroup(group.id)}
+						>
+							Dissolve group
+						</Button>
+					</div>
+				</section>
+			) : null}
 			<div className="space-y-2">
 				<Field className="space-y-0">
 					<Input
