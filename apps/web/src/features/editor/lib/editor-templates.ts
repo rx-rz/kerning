@@ -500,26 +500,71 @@ export function resolveTemplateFonts(
   card: EditorCard,
   available: TemplateFontAvailability,
 ): EditorCard {
+  const nodes = card.nodes.map((node) =>
+    node.type === "text"
+      ? (() => {
+          const fontType = resolveTemplateFontType(node.fontType, available);
+          const role =
+            fontType === "sec1"
+              ? "secondary-one"
+              : fontType === "sec2"
+                ? "secondary-two"
+                : "primary";
+          return {
+            ...node,
+            fontType,
+            fontSource: { type: "role" as const, role },
+          };
+        })()
+      : node,
+  );
+  const textNodeIndexes = nodes.flatMap((node, index) =>
+    node.type === "text" ? [index] : [],
+  );
+
+  if (
+    textNodeIndexes.length >= 3 &&
+    available.primary &&
+    available.sec1 &&
+    available.sec2
+  ) {
+    const counts: Record<FontType, number> = { primary: 0, sec1: 0, sec2: 0 };
+    for (const index of textNodeIndexes) {
+      const node = nodes[index];
+      if (node?.type === "text") counts[node.fontType] += 1;
+    }
+
+    // Templates with enough copy should exercise the whole selected type system.
+    for (const missing of ["primary", "sec1", "sec2"] as const) {
+      if (counts[missing]) continue;
+      const donorIndex = textNodeIndexes.find((index) => {
+        const node = nodes[index];
+        return node?.type === "text" && counts[node.fontType] > 1;
+      });
+      const donor = donorIndex === undefined ? undefined : nodes[donorIndex];
+      if (donor?.type !== "text" || donorIndex === undefined) continue;
+
+      counts[donor.fontType] -= 1;
+      counts[missing] += 1;
+      nodes[donorIndex] = {
+        ...donor,
+        fontType: missing,
+        fontSource: {
+          type: "role",
+          role:
+            missing === "sec1"
+              ? "secondary-one"
+              : missing === "sec2"
+                ? "secondary-two"
+                : "primary",
+        },
+      };
+    }
+  }
+
   return {
     ...card,
-    nodes: card.nodes.map((node) =>
-      node.type === "text"
-        ? (() => {
-            const fontType = resolveTemplateFontType(node.fontType, available);
-            const role =
-              fontType === "sec1"
-                ? "secondary-one"
-                : fontType === "sec2"
-                  ? "secondary-two"
-                  : "primary";
-            return {
-              ...node,
-              fontType,
-              fontSource: { type: "role" as const, role },
-            };
-          })()
-        : node,
-    ),
+    nodes,
   };
 }
 

@@ -58,6 +58,14 @@ export const writeLimiter = createRateLimiter({
   blockDuration: 120,
 });
 
+// A three-family project can legitimately contain dozens of static faces.
+export const fileWriteLimiter = createRateLimiter({
+  points: 120,
+  duration: 60,
+  prefix: "file-write",
+  blockDuration: 120,
+});
+
 export const uploadUrlLimiter = createRateLimiter({
   points: 60,
   duration: 60,

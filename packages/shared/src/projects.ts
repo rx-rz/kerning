@@ -2,6 +2,9 @@ import * as v from "valibot";
 
 import { FontAxisSchema } from "./google-fonts.js";
 
+export const MAX_PROJECT_FONT_FAMILIES = 3;
+export const MAX_PROJECT_FONT_FACES = 60;
+
 export const PROJECT_ROUTES = {
   list: "/projects",
   create: "/projects",

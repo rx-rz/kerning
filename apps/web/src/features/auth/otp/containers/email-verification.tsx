@@ -50,7 +50,7 @@ export function EmailVerification({ email }: EmailVerificationProps) {
 
 		try {
 			await verifyOtp.mutateAsync({ email, otp });
-			await navigate({ to: "/" });
+			await navigate({ to: "/dashboard" });
 		} catch (caughtError) {
 			setError(
 				caughtError instanceof Error

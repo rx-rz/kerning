@@ -11,9 +11,9 @@ import { parseJson, parseValue } from "../../lib/http.js";
 import { getUserFromContext, requireAuth } from "../../middleware/auth.js";
 import { rateLimit } from "../../middleware/rate-limit.js";
 import {
+  fileWriteLimiter,
   personalReadLimiter,
   uploadUrlLimiter,
-  writeLimiter,
 } from "../../rate-limiter/index.js";
 import {
   createFileService,
@@ -45,7 +45,7 @@ fileRoutes.get(
 fileRoutes.post(
   FILE_ROUTES.create,
   rateLimit({
-    limiter: writeLimiter,
+    limiter: fileWriteLimiter,
     getKey: ({ c }) => getUserFromContext(c).id,
   }),
   async (c) => {
@@ -90,7 +90,7 @@ fileRoutes.get(
 fileRoutes.delete(
   FILE_ROUTES.delete,
   rateLimit({
-    limiter: writeLimiter,
+    limiter: fileWriteLimiter,
     getKey: ({ c }) => getUserFromContext(c).id,
   }),
   async (c) => {

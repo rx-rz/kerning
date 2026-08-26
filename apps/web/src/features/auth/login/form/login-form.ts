@@ -27,7 +27,7 @@ export function useLoginForm() {
 
     try {
       await login.mutateAsync(input)
-      await navigate({ to: '/' })
+      await navigate({ to: '/dashboard' })
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Sign in failed.')
     }

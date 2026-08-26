@@ -18,15 +18,16 @@ export const Route = createRootRoute({
 				name: "viewport",
 				content: "width=device-width, initial-scale=1",
 			},
-			{
-				title: "TanStack Start Starter",
-			},
+			{ title: "Kerning — Type design workspace" },
+			{ name: "theme-color", content: "#fed503" },
 		],
 		links: [
 			{
 				rel: "stylesheet",
 				href: appCss,
 			},
+			{ rel: "icon", href: "/favicon.ico" },
+			{ rel: "manifest", href: "/manifest.json" },
 		],
 	}),
 	shellComponent: RootDocument,

@@ -1,6 +1,11 @@
 // lib/font-upload.ts
 
-import type { FontAxis, ProjectFont } from "@kerning/shared";
+import {
+	MAX_PROJECT_FONT_FACES,
+	MAX_PROJECT_FONT_FAMILIES,
+	type FontAxis,
+	type ProjectFont,
+} from "@kerning/shared";
 
 import {
 	type FontFormat,
@@ -10,6 +15,7 @@ import {
 	type StoredFontFace,
 	type StoredFontFamily,
 	saveFontFamily,
+	saveFontFamilies,
 	saveGoogleFont,
 	toFontFamilyMeta,
 } from "#/db/font-db";
@@ -35,6 +41,7 @@ const WEIGHT_MAP: Record<string, number> = {
 
 const WEIGHT_WORDS = Object.keys(WEIGHT_MAP);
 export const MAX_FONT_FILE_SIZE = 10 * 1024 * 1024;
+export { MAX_PROJECT_FONT_FAMILIES };
 
 type ParsedFontFile = Pick<
 	StoredFontFace,
@@ -49,6 +56,25 @@ type UploadFontFilesOptions = {
 
 export function isFontFile(file: File) {
 	return /\.(ttf|otf|woff|woff2)$/i.test(file.name);
+}
+
+export function validateFontFiles(files: File[]) {
+	const unsupported = files.find((file) => !isFontFile(file));
+	if (unsupported) {
+		throw new Error(
+			`${unsupported.name} is not a supported font. Choose TTF, OTF, WOFF, or WOFF2.`,
+		);
+	}
+
+	const empty = files.find((file) => file.size === 0);
+	if (empty) {
+		throw new Error(`${empty.name} is empty. Choose a valid font file.`);
+	}
+
+	const oversized = files.find((file) => file.size > MAX_FONT_FILE_SIZE);
+	if (oversized) {
+		throw new Error(`${oversized.name} exceeds the 10 MB font file limit.`);
+	}
 }
 
 export function getFontFormat(fileName: string): FontFormat {
@@ -364,6 +390,10 @@ export async function loadFontFamilyIntoDocument(fontFamily: StoredFontFamily) {
 
 			document.fonts.add(fontFace);
 			loadedFaces.add(face.id);
+		} catch {
+			throw new Error(
+				`${face.fileName} could not be loaded. Check that it is a valid, uncorrupted font file.`,
+			);
 		} finally {
 			URL.revokeObjectURL(url);
 		}
@@ -561,19 +591,14 @@ export async function uploadFontFiles(
 ) {
 	if (!files?.length) return [];
 
-	const validFiles = Array.from(files).filter(isFontFile);
-	const oversizedFile = validFiles.find(
-		(file) => file.size > MAX_FONT_FILE_SIZE,
-	);
-	if (oversizedFile) {
-		throw new Error(`${oversizedFile.name} exceeds the 10 MB font file limit.`);
-	}
-
-	if (!validFiles.length) return [];
+	const validFiles = Array.from(files);
+	validateFontFiles(validFiles);
 
 	const existingFamilies = await getAllFontFamilies();
 
 	const familyMap = new Map<string, StoredFontFamily>();
+	const changedFamilyIds = new Set<string>();
+	let addedFaceCount = 0;
 
 	for (const family of existingFamilies) {
 		if (family.source === "google") continue;
@@ -608,8 +633,13 @@ export async function uploadFontFiles(
 		let family = familyMap.get(familyKey);
 
 		if (!family) {
-			if (options.maxFamilies && familyMap.size >= options.maxFamilies) {
-				continue;
+			if (
+				typeof options.maxFamilies === "number" &&
+				familyMap.size >= options.maxFamilies
+			) {
+				throw new Error(
+					`Projects support up to ${options.maxFamilies} font ${options.maxFamilies === 1 ? "family" : "families"}. Remove one before adding another.`,
+				);
 			}
 
 			const familyId = crypto.randomUUID();
@@ -660,13 +690,41 @@ export async function uploadFontFiles(
 		});
 
 		family.updatedAt = new Date().toISOString();
+		changedFamilyIds.add(family.id);
+		addedFaceCount += 1;
+	}
+
+	if (!addedFaceCount) {
+		throw new Error("Those font faces are already in this project.");
 	}
 
 	const updatedFamilies = Array.from(familyMap.values());
+	const faceCount = updatedFamilies.reduce(
+		(total, family) => total + family.faces.length,
+		0,
+	);
+	if (faceCount > MAX_PROJECT_FONT_FACES) {
+		throw new Error(
+			`Projects support up to ${MAX_PROJECT_FONT_FACES} font files. Remove unused faces before adding more.`,
+		);
+	}
 
-	for (const family of updatedFamilies) {
-		await saveFontFamily(family);
+	const changedFamilies = updatedFamilies.filter((item) =>
+		changedFamilyIds.has(item.id),
+	);
+
+	for (const family of changedFamilies) {
+		// Validate browser decoding before persisting, so a corrupt file cannot
+		// poison future startup loads.
 		await loadFontFamilyIntoDocument(family);
+	}
+
+	try {
+		await saveFontFamilies(changedFamilies);
+	} catch {
+		throw new Error(
+			"Fonts could not be saved in this browser. Free some site storage and try again.",
+		);
 	}
 
 	return updatedFamilies.map(toFontFamilyMeta);

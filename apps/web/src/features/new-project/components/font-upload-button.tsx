@@ -1,4 +1,4 @@
-import { Info, Upload } from "lucide-react";
+import { Info } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
 import { Kbd } from "#/components/ui/kbd";
@@ -18,6 +18,7 @@ export function FontUploadButton({
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string>();
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -47,13 +48,21 @@ export function FontUploadButton({
     if (!files?.length) return;
 
     setIsUploading(true);
+    setUploadError(undefined);
 
     try {
       const fonts = await uploadFontFiles(files, { maxFamilies: maxFonts });
 
       onUploaded(fonts);
-      if (inputRef.current) inputRef.current.value = "";
+    } catch (error) {
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load those fonts. Please try again.",
+      );
     } finally {
+      // Clearing lets users retry the same file after correcting a transient issue.
+      if (inputRef.current) inputRef.current.value = "";
       setIsUploading(false);
     }
   }
@@ -68,6 +77,7 @@ export function FontUploadButton({
         multiple
         accept=".ttf,.otf,.woff,.woff2"
         className="hidden"
+        aria-label="Choose font files"
         onChange={(event) => handleFiles(event.target.files)}
       />
 
@@ -77,6 +87,7 @@ export function FontUploadButton({
         size="lg"
         className="w-full justify-between gap-4 rounded-xl mt-4 px-4 py-4 text-left"
         disabled={isUploading || isFull}
+        aria-describedby="font-upload-help font-upload-status"
         onClick={() => inputRef.current?.click()}
       >
         <span className="inline-flex min-w-0 items-center gap-4 text-muted-foreground">
@@ -99,7 +110,10 @@ export function FontUploadButton({
           <span>U</span>
         </Kbd>
       </Button>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div
+        id="font-upload-help"
+        className="flex items-start gap-2 text-sm text-muted-foreground"
+      >
         <Info className="size-4" />
         <p>
           {maxFonts > 0
@@ -109,6 +123,18 @@ export function FontUploadButton({
               : "Remove a selected font to upload another."}
         </p>
       </div>
+      <p
+        id="font-upload-status"
+        role={uploadError ? "alert" : "status"}
+        aria-live="polite"
+        className={
+          uploadError
+            ? "rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            : "sr-only"
+        }
+      >
+        {uploadError ?? (isUploading ? "Loading selected font files." : "")}
+      </p>
     </div>
   );
 }

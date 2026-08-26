@@ -83,6 +83,16 @@ export async function saveFontFamily(fontFamily: StoredFontFamily) {
   await db.put(FONT_FAMILY_STORE, fontFamily)
 }
 
+export async function saveFontFamilies(fontFamilies: StoredFontFamily[]) {
+  const db = await getFontDB()
+  const transaction = db.transaction(FONT_FAMILY_STORE, "readwrite")
+
+  await Promise.all([
+    ...fontFamilies.map((fontFamily) => transaction.store.put(fontFamily)),
+    transaction.done,
+  ])
+}
+
 export async function saveGoogleFont(projectFont: ProjectFont) {
   const now = new Date().toISOString()
 

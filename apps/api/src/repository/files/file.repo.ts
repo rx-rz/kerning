@@ -94,3 +94,45 @@ export const deleteFileByIdInDB = async ({
 
   return row ? mapFileFromDB(row) : null;
 };
+
+export const listFilesByParentInDB = async ({
+  parentId,
+  ownerId,
+  db = defaultDb,
+}: {
+  parentId: string;
+  ownerId: string;
+  db?: DB;
+}) => {
+  const rows = await db
+    .select()
+    .from(fileTable)
+    .where(
+      and(
+        eq(fileTable.parentType, "PROJECT"),
+        eq(fileTable.parentId, parentId),
+        eq(fileTable.ownerId, ownerId),
+      ),
+    );
+
+  return rows.map(mapFileFromDB);
+};
+
+export const deleteFilesByParentInDB = async ({
+  parentId,
+  ownerId,
+  db = defaultDb,
+}: {
+  parentId: string;
+  ownerId: string;
+  db?: DB;
+}) =>
+  db
+    .delete(fileTable)
+    .where(
+      and(
+        eq(fileTable.parentType, "PROJECT"),
+        eq(fileTable.parentId, parentId),
+        eq(fileTable.ownerId, ownerId),
+      ),
+    );

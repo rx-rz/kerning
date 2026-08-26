@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { API_ROUTES } from "#/api/api-routes";
 import { createFileMetadata } from "#/api/files/create";
+import { deleteRemoteFile } from "#/api/files/delete";
 import { getFileUploadUrl } from "#/api/files/upload-url";
 import { useCreateProjectApi } from "#/api/projects/create";
 import type { ProjectData } from "#/api/projects/types";
@@ -36,7 +37,11 @@ import {
 	mergeFontFamilies,
 } from "#/features/new-project/containers/font-upload-tab";
 import { api } from "#/lib/api";
-import { importGoogleFont, loadFontFamilyIntoDocument } from "#/lib/fonts";
+import {
+	importGoogleFont,
+	loadFontFamilyIntoDocument,
+	MAX_PROJECT_FONT_FAMILIES,
+} from "#/lib/fonts";
 
 export const Route = createFileRoute("/new")({
 	validateSearch: (search): { confirm?: boolean } => {
@@ -58,22 +63,47 @@ function RouteComponent() {
 	const [fonts, setFonts] = useState<FontFamilyMeta[]>([]);
 	const [isSubmittingProject, setIsSubmittingProject] = useState(false);
 	const [projectCreationError, setProjectCreationError] = useState<string>();
+	const [fontLoadError, setFontLoadError] = useState<string>();
 	const [primaryFontId, setPrimaryFontId] = useState<string>();
 	const [secondaryFontOneId, setSecondaryFontOneId] = useState<string>();
 	const [secondaryFontTwoId, setSecondaryFontTwoId] = useState<string>();
 
 	useEffect(() => {
 		async function loadStoredFonts() {
-			const storedFonts = await getAllFontFamilies();
+			try {
+				const storedFonts = await getAllFontFamilies();
+				const loaded = await Promise.allSettled(
+					storedFonts.map(async (font) => {
+						await loadFontFamilyIntoDocument(font);
+						return font;
+					}),
+				);
+				const successful = loaded.flatMap((result) =>
+					result.status === "fulfilled" ? [result.value] : [],
+				);
+				const failedFonts = loaded.flatMap((result, index) =>
+					result.status === "rejected" && storedFonts[index]
+						? [storedFonts[index]]
+						: [],
+				);
 
-			for (const font of storedFonts) {
-				await loadFontFamilyIntoDocument(font);
+				setFonts(mergeFontFamilies(successful.map(toFontFamilyMeta)));
+				if (failedFonts.length) {
+					await Promise.allSettled(
+						failedFonts.map((font) => deleteFontFamily(font.id)),
+					);
+					setFontLoadError(
+						`${failedFonts.length} invalid saved font ${failedFonts.length === 1 ? "family was" : "families were"} removed from this browser. Re-upload the original files to restore them.`,
+					);
+				}
+			} catch {
+				setFontLoadError(
+					"Saved fonts are unavailable in this browser. Check site-storage permissions and reload.",
+				);
 			}
-
-			setFonts(mergeFontFamilies(storedFonts.map(toFontFamilyMeta)));
 		}
 
-		loadStoredFonts();
+		void loadStoredFonts();
 	}, []);
 
 	useEffect(() => {
@@ -111,6 +141,10 @@ function RouteComponent() {
 
 	const uploadedFonts = fonts.filter((font) => font.source !== "google");
 	const googleFonts = fonts.filter((font) => font.source === "google");
+	const fontSelectionError =
+		fonts.length > MAX_PROJECT_FONT_FAMILIES
+			? `Projects support up to ${MAX_PROJECT_FONT_FAMILIES} font families. Remove ${fonts.length - MAX_PROJECT_FONT_FAMILIES} before continuing.`
+			: fontLoadError;
 	const trimmedProjectName = projectName.trim();
 	const projectNameError =
 		trimmedProjectName.length < 2
@@ -119,16 +153,24 @@ function RouteComponent() {
 
 	const handleFontsChange = useCallback((nextFonts: FontFamilyMeta[]) => {
 		setFonts(mergeFontFamilies(nextFonts));
+		setFontLoadError(undefined);
 	}, []);
 
 	const handleGoogleFontSelected = useCallback(
 		async (font: GoogleFontCatalogItem) => {
-			const importedFont = await importGoogleFont(font);
+			try {
+				const importedFont = await importGoogleFont(font);
 
-			setFonts((currentFonts) =>
-				mergeFontFamilies([...currentFonts, importedFont]),
-			);
-			setPrimaryFontId((currentFontId) => currentFontId ?? importedFont.id);
+				setFonts((currentFonts) =>
+					mergeFontFamilies([...currentFonts, importedFont]),
+				);
+				setPrimaryFontId((currentFontId) => currentFontId ?? importedFont.id);
+				setFontLoadError(undefined);
+			} catch {
+				setFontLoadError(
+					"Google Font could not be saved in this browser. Check site-storage permissions and try again.",
+				);
+			}
 		},
 		[],
 	);
@@ -143,7 +185,7 @@ function RouteComponent() {
 	}, [navigate]);
 
 	const handleBackToDashboard = useCallback(async () => {
-		await navigate({ to: "/" });
+		await navigate({ to: "/dashboard" });
 	}, [navigate]);
 
 	const handleBackToSelection = useCallback(async () => {
@@ -159,6 +201,8 @@ function RouteComponent() {
 		setIsSubmittingProject(true);
 		setProjectCreationError(undefined);
 		let createdProjectId: string | undefined;
+		const attemptedUploadKeys = new Set<string>();
+		let cleanupIncomplete = false;
 
 		try {
 			const { project } = await createProject.mutateAsync({
@@ -171,6 +215,7 @@ function RouteComponent() {
 				primaryFontId,
 				secondaryFontOneId,
 				secondaryFontTwoId,
+				onUploadStarted: (key) => attemptedUploadKeys.add(key),
 			});
 			const updatedProject = await api.jsend<ProjectData>(
 				API_ROUTES.projects.detail(project.id),
@@ -192,12 +237,20 @@ function RouteComponent() {
 			});
 		} catch (error) {
 			if (createdProjectId) {
+				const cleanupResults = await Promise.allSettled(
+					Array.from(attemptedUploadKeys, deleteRemoteFile),
+				);
+				cleanupIncomplete = cleanupResults.some(
+					(result) => result.status === "rejected",
+				);
+
 				try {
 					await api.jsend(
 						API_ROUTES.projects.detail(createdProjectId),
 						"DELETE",
 					);
 				} catch {
+					cleanupIncomplete = true;
 					// Preserve the original font/project error; list invalidation below
 					// ensures any surviving draft is visible rather than silently orphaned.
 				}
@@ -205,10 +258,14 @@ function RouteComponent() {
 					queryKey: queries.projects.list.queryKey,
 				});
 			}
-			setProjectCreationError(
+			const message =
 				error instanceof Error
 					? error.message
-					: "Unable to create the project. Please try again.",
+					: "Unable to create the project. Please try again.";
+			setProjectCreationError(
+				cleanupIncomplete
+					? `${message} Cleanup was incomplete; the draft remains visible so you can retry or delete it.`
+					: message,
 			);
 		} finally {
 			setIsSubmittingProject(false);
@@ -225,10 +282,17 @@ function RouteComponent() {
 	]);
 
 	const handleDeleteFont = useCallback(async (fontId: string) => {
-		await deleteFontFamily(fontId);
-		setFonts((currentFonts) =>
-			currentFonts.filter((font) => font.id !== fontId),
-		);
+		try {
+			await deleteFontFamily(fontId);
+			setFonts((currentFonts) =>
+				currentFonts.filter((font) => font.id !== fontId),
+			);
+			setFontLoadError(undefined);
+		} catch {
+			setFontLoadError(
+				"This font could not be removed from browser storage. Reload and try again.",
+			);
+		}
 	}, []);
 
 	useEffect(() => {
@@ -282,6 +346,8 @@ function RouteComponent() {
 					onSecondaryTwoChange={setSecondaryFontTwoId}
 					onBack={handleBackToDashboard}
 					onProceed={handleProceed}
+					fontLoadError={fontSelectionError}
+					canProceed={fonts.length <= MAX_PROJECT_FONT_FAMILIES}
 				/>
 			)}
 
@@ -291,6 +357,7 @@ function RouteComponent() {
 				onSelectFont={handleGoogleFontSelected}
 				onRemoveFont={handleDeleteFont}
 				currentFontCount={fonts.length}
+				maxFontFamilies={MAX_PROJECT_FONT_FAMILIES}
 				importedFonts={googleFonts.map((font) => ({
 					id: font.id,
 					name: font.name,
@@ -317,6 +384,8 @@ function CreateProjectForm({
 	onSecondaryTwoChange,
 	onBack,
 	onProceed,
+	fontLoadError,
+	canProceed,
 }: {
 	activeTab: string;
 	onActiveTabChange: (tab: string) => void;
@@ -334,6 +403,8 @@ function CreateProjectForm({
 	onSecondaryTwoChange: (fontId: string) => void;
 	onBack: () => void;
 	onProceed: () => void;
+	fontLoadError?: string;
+	canProceed: boolean;
 }) {
 	return (
 		<section className="flex min-h-dvh w-full items-start justify-center overflow-y-auto px-4 py-6 sm:px-6 md:items-center md:px-8">
@@ -370,6 +441,14 @@ function CreateProjectForm({
 						</div>
 
 						<CardContent className="mt-12 w-full space-y-6 px-0">
+							{fontLoadError && (
+								<p
+									role="alert"
+									className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive"
+								>
+									{fontLoadError}
+								</p>
+							)}
 							<SelectedFonts fonts={fonts} onDeleteFont={onDeleteFont} />
 
 							<TabsContent value="google">
@@ -379,6 +458,10 @@ function CreateProjectForm({
 							<TabsContent value="upload">
 								<FontUploadTab
 									fonts={uploadedFonts}
+									maxFonts={Math.max(
+										0,
+										MAX_PROJECT_FONT_FAMILIES - googleFonts.length,
+									)}
 									onFontsChange={(nextUploadFonts) =>
 										onFontsChange([...googleFonts, ...nextUploadFonts])
 									}
@@ -403,7 +486,7 @@ function CreateProjectForm({
 						<Button
 							type="button"
 							className="mt-12 w-full p-5"
-							disabled={!primaryFontId}
+							disabled={!primaryFontId || !canProceed}
 							onClick={onProceed}
 						>
 							Proceed
@@ -455,6 +538,7 @@ function ConfirmProjectView({
 						value={projectName}
 						onChange={(event) => onProjectNameChange(event.target.value)}
 						placeholder="My Project"
+						maxLength={120}
 						aria-invalid={Boolean(projectNameError)}
 						aria-describedby={
 							projectNameError ? "project-name-error" : undefined
@@ -657,12 +741,14 @@ async function buildProjectFontInputs({
 	primaryFontId,
 	secondaryFontOneId,
 	secondaryFontTwoId,
+	onUploadStarted,
 }: {
 	projectId: string;
 	fonts: FontFamilyMeta[];
 	primaryFontId?: string;
 	secondaryFontOneId?: string;
 	secondaryFontTwoId?: string;
+	onUploadStarted: (key: string) => void;
 }) {
 	const rolesByFontId = new Map<string, ProjectFontInput["role"]>([
 		...(primaryFontId ? [[primaryFontId, "primary"] as const] : []),
@@ -674,7 +760,7 @@ async function buildProjectFontInputs({
 			: []),
 	]);
 
-	return Promise.all(
+	return settleAll(
 		fonts.map(async (font, index): Promise<ProjectFontInput> => {
 			if (font.source === "google") {
 				const face = createGoogleProjectFace(font);
@@ -702,7 +788,7 @@ async function buildProjectFontInputs({
 				throw new Error(`Missing local font data for ${font.name}`);
 			}
 
-			const faces = await Promise.all(
+			const faces = await settleAll(
 				storedFont.faces.map(async (face) => {
 					const key = createProjectFontFileKey({
 						projectId,
@@ -712,6 +798,7 @@ async function buildProjectFontInputs({
 					});
 					const { url } = await getFileUploadUrl(key);
 
+					onUploadStarted(key);
 					await uploadBlobToSignedUrl({
 						url,
 						blob: face.blob,
@@ -759,6 +846,20 @@ async function buildProjectFontInputs({
 				createdAt: storedFont.createdAt,
 			};
 		}),
+	);
+}
+
+async function settleAll<T>(promises: Promise<T>[]) {
+	// Wait for every in-flight upload before rollback starts; Promise.all would
+	// reject early and let late uploads recreate objects after cleanup.
+	const results = await Promise.allSettled(promises);
+	const failure = results.find(
+		(result): result is PromiseRejectedResult => result.status === "rejected",
+	);
+	if (failure) throw failure.reason;
+
+	return results.flatMap((result) =>
+		result.status === "fulfilled" ? [result.value] : [],
 	);
 }
 
@@ -843,24 +944,31 @@ async function uploadBlobToSignedUrl({
 	blob: Blob;
 	mimeType: string;
 }) {
-	let response: Response;
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		let response: Response;
 
-	try {
-		response = await fetch(url, {
-			method: "PUT",
-			headers: {
-				"Content-Type": mimeType,
-			},
-			body: blob,
-		});
-	} catch {
-		throw new Error(
-			"Unable to reach font storage. Check your connection and try again.",
-		);
-	}
+		try {
+			response = await fetch(url, {
+				method: "PUT",
+				headers: {
+					"Content-Type": mimeType,
+				},
+				body: blob,
+				signal: AbortSignal.timeout(60_000),
+			});
+		} catch {
+			if (attempt === 0) continue;
+			throw new Error(
+				"Unable to reach font storage. Check your connection and try again.",
+			);
+		}
 
-	if (!response.ok) {
-		throw new Error(`Unable to upload font file (${response.status})`);
+		if (response.ok) return;
+		if (attempt === 0 && (response.status === 429 || response.status >= 500)) {
+			continue;
+		}
+
+		throw new Error(`Unable to upload font file (${response.status}).`);
 	}
 }
 

@@ -319,24 +319,24 @@ export function TypeLens({
 				<Button
 					type="button"
 					aria-label="Back to Canvas"
-		className="bg-white shadow-xl"
+					className="bg-white shadow-xl"
 					size="sm"
 					onClick={onClose}
 				>
-					<ArrowLeft className="text-primary"/> 
+					<ArrowLeft className="text-primary" />
 				</Button>
 				<div className="min-w-0">
 					<p className="text-sm font-semibold">Type Lens</p>
-
 				</div>
-				{/* <Button
+				<Button
+					type="button"
 					size="sm"
 					className="ml-auto"
 					disabled={!studyText}
 					onClick={() => onPinToCanvas({ text: studyText, role, kind: mode })}
 				>
 					Pin to Canvas
-				</Button> */}
+				</Button>
 			</header>
 
 			<main className="flex check-card min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-5">

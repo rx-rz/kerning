@@ -4,6 +4,11 @@ import type {
   UpdateProjectInput,
 } from "@kerning/shared";
 import {
+  MAX_PROJECT_FONT_FACES,
+  MAX_PROJECT_FONT_FAMILIES,
+} from "@kerning/shared";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import {
   BadRequestError,
   InternalServerError,
   NotFoundError,
@@ -17,6 +22,12 @@ import {
   replaceProjectFontsInDB,
   updateProjectInDB,
 } from "../../repository/projects/index.js";
+import {
+  deleteFilesByParentInDB,
+  listFilesByParentInDB,
+} from "../../repository/files/index.js";
+import { env } from "../../lib/env.js";
+import { assertR2Configured, r2Client } from "../../storage/index.js";
 import {
   MAX_FONT_FILE_SIZE,
   selfHostGoogleFonts,
@@ -113,9 +124,20 @@ export const updateProjectService = async ({
 };
 
 function assertFontSizes(fonts: ProjectFontInput[]) {
-  const oversized = fonts
-    .flatMap((font) => font.faces ?? [])
-    .find((face) => face.size > MAX_FONT_FILE_SIZE);
+  if (fonts.length > MAX_PROJECT_FONT_FAMILIES) {
+    throw new BadRequestError(
+      `Projects support up to ${MAX_PROJECT_FONT_FAMILIES} font families`,
+    );
+  }
+
+  const faces = fonts.flatMap((font) => font.faces ?? []);
+  if (faces.length > MAX_PROJECT_FONT_FACES) {
+    throw new BadRequestError(
+      `Projects support up to ${MAX_PROJECT_FONT_FACES} font files`,
+    );
+  }
+
+  const oversized = faces.find((face) => face.size > MAX_FONT_FILE_SIZE);
   if (oversized) {
     throw new BadRequestError(
       `${oversized.fileName} exceeds the 10 MB font file limit`,
@@ -130,6 +152,35 @@ export const deleteProjectService = async ({
   projectId: string;
   userId: string;
 }) => {
+  const existingProject = await getProjectDetailsInDB({
+    projectId,
+    ownerId: userId,
+  });
+
+  if (!existingProject) {
+    throw new NotFoundError("Project not found");
+  }
+
+  const files = await listFilesByParentInDB({
+    parentId: projectId,
+    ownerId: userId,
+  });
+
+  if (files.length) {
+    assertR2Configured();
+    await Promise.all(
+      files.map((file) =>
+        r2Client.send(
+          new DeleteObjectCommand({
+            Bucket: env.CLOUDFLARE_BUCKET_NAME,
+            Key: file.key,
+          }),
+        ),
+      ),
+    );
+    await deleteFilesByParentInDB({ parentId: projectId, ownerId: userId });
+  }
+
   const project = await deleteProjectInDB({
     projectId,
     ownerId: userId,
