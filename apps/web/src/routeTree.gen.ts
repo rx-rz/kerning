@@ -9,31 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as NewRouteImport } from './routes/new'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthIndexRouteImport } from './routes/auth.index'
-import { Route as ProjectProjectIdRouteImport } from './routes/project.$projectId'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DemoRouteImport } from './routes/demo'
+import { Route as NewRouteImport } from './routes/new'
+import { Route as DemoIndexRouteImport } from './routes/demo.index'
 import { Route as DemoPosthogRouteImport } from './routes/demo/posthog'
-import { Route as AuthVerifyEmailRouteImport } from './routes/auth.verify-email'
-import { Route as AuthSignupRouteImport } from './routes/auth.signup'
-import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as ProjectProjectIdRouteImport } from './routes/project.$projectId'
 
-const NewRoute = NewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -41,153 +28,115 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthIndexRoute = AuthIndexRouteImport.update({
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewRoute = NewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoIndexRoute = DemoIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthRoute,
+  getParentRoute: () => DemoRoute,
+} as any)
+const DemoPosthogRoute = DemoPosthogRouteImport.update({
+  id: '/posthog',
+  path: '/posthog',
+  getParentRoute: () => DemoRoute,
 } as any)
 const ProjectProjectIdRoute = ProjectProjectIdRouteImport.update({
   id: '/project/$projectId',
   path: '/project/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DemoPosthogRoute = DemoPosthogRouteImport.update({
-  id: '/demo/posthog',
-  path: '/demo/posthog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthSignupRoute = AuthSignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => AuthRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/auth': typeof AuthRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRouteWithChildren
   '/new': typeof NewRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/signup': typeof AuthSignupRoute
-  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/demo/posthog': typeof DemoPosthogRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
-  '/auth/': typeof AuthIndexRoute
+  '/demo/': typeof DemoIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/dashboard': typeof DashboardRoute
   '/new': typeof NewRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/signup': typeof AuthSignupRoute
-  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/demo/posthog': typeof DemoPosthogRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
-  '/auth': typeof AuthIndexRoute
+  '/demo': typeof DemoIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/auth': typeof AuthRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRouteWithChildren
   '/new': typeof NewRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/signup': typeof AuthSignupRoute
-  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/demo/posthog': typeof DemoPosthogRoute
   '/project/$projectId': typeof ProjectProjectIdRoute
-  '/auth/': typeof AuthIndexRoute
+  '/demo/': typeof DemoIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/about'
-    | '/auth'
     | '/dashboard'
+    | '/demo'
     | '/new'
-    | '/auth/login'
-    | '/auth/signup'
-    | '/auth/verify-email'
     | '/demo/posthog'
     | '/project/$projectId'
-    | '/auth/'
+    | '/demo/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/dashboard'
     | '/new'
-    | '/auth/login'
-    | '/auth/signup'
-    | '/auth/verify-email'
     | '/demo/posthog'
     | '/project/$projectId'
-    | '/auth'
+    | '/demo'
   id:
     | '__root__'
     | '/'
     | '/about'
-    | '/auth'
     | '/dashboard'
+    | '/demo'
     | '/new'
-    | '/auth/login'
-    | '/auth/signup'
-    | '/auth/verify-email'
     | '/demo/posthog'
     | '/project/$projectId'
-    | '/auth/'
+    | '/demo/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  AuthRoute: typeof AuthRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  DemoRoute: typeof DemoRouteWithChildren
   NewRoute: typeof NewRoute
-  DemoPosthogRoute: typeof DemoPosthogRoute
   ProjectProjectIdRoute: typeof ProjectProjectIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/new': {
-      id: '/new'
-      path: '/new'
-      fullPath: '/new'
-      preLoaderRoute: typeof NewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -197,19 +146,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/': {
-      id: '/auth/'
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new': {
+      id: '/new'
+      path: '/new'
+      fullPath: '/new'
+      preLoaderRoute: typeof NewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/': {
+      id: '/demo/'
       path: '/'
-      fullPath: '/auth/'
-      preLoaderRoute: typeof AuthIndexRouteImport
-      parentRoute: typeof AuthRoute
+      fullPath: '/demo/'
+      preLoaderRoute: typeof DemoIndexRouteImport
+      parentRoute: typeof DemoRoute
+    }
+    '/demo/posthog': {
+      id: '/demo/posthog'
+      path: '/posthog'
+      fullPath: '/demo/posthog'
+      preLoaderRoute: typeof DemoPosthogRouteImport
+      parentRoute: typeof DemoRoute
     }
     '/project/$projectId': {
       id: '/project/$projectId'
@@ -218,60 +188,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/demo/posthog': {
-      id: '/demo/posthog'
-      path: '/demo/posthog'
-      fullPath: '/demo/posthog'
-      preLoaderRoute: typeof DemoPosthogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/verify-email': {
-      id: '/auth/verify-email'
-      path: '/verify-email'
-      fullPath: '/auth/verify-email'
-      preLoaderRoute: typeof AuthVerifyEmailRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/signup': {
-      id: '/auth/signup'
-      path: '/signup'
-      fullPath: '/auth/signup'
-      preLoaderRoute: typeof AuthSignupRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/auth/login': {
-      id: '/auth/login'
-      path: '/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof AuthRoute
-    }
   }
 }
 
-interface AuthRouteChildren {
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthSignupRoute: typeof AuthSignupRoute
-  AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
-  AuthIndexRoute: typeof AuthIndexRoute
+interface DemoRouteChildren {
+  DemoPosthogRoute: typeof DemoPosthogRoute
+  DemoIndexRoute: typeof DemoIndexRoute
 }
 
-const AuthRouteChildren: AuthRouteChildren = {
-  AuthLoginRoute: AuthLoginRoute,
-  AuthSignupRoute: AuthSignupRoute,
-  AuthVerifyEmailRoute: AuthVerifyEmailRoute,
-  AuthIndexRoute: AuthIndexRoute,
+const DemoRouteChildren: DemoRouteChildren = {
+  DemoPosthogRoute: DemoPosthogRoute,
+  DemoIndexRoute: DemoIndexRoute,
 }
 
-const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+const DemoRouteWithChildren = DemoRoute._addFileChildren(DemoRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  AuthRoute: AuthRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  DemoRoute: DemoRouteWithChildren,
   NewRoute: NewRoute,
-  DemoPosthogRoute: DemoPosthogRoute,
   ProjectProjectIdRoute: ProjectProjectIdRoute,
 }
 export const routeTree = rootRouteImport

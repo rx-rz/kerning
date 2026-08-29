@@ -6,7 +6,6 @@ import { useUpdateProjectApi } from "#/api/projects/update";
 import { Button } from "#/components/ui/button";
 import { EditorCanvas } from "#/features/editor/components/editor-canvas";
 import { EditorInspector } from "#/features/editor/components/editor-inspector";
-import { FontSystemPanel } from "#/features/editor/components/font-system-panel";
 import { TemplateSidebar } from "#/features/editor/components/template-sidebar";
 import {
 	TypeLens,
@@ -92,7 +91,6 @@ function EditorWorkspace({
 } = {}) {
 	const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 	const [templateCardId, setTemplateCardId] = useState<string | null>(null);
-	const [fontManagerOpen, setFontManagerOpen] = useState(false);
 	const fontLabContext = useFontLabContextStore((state) => state.context);
 	const closeFontLab = useFontLabContextStore((state) => state.close);
 	const canvasFonts = useMemo(
@@ -189,7 +187,7 @@ function EditorWorkspace({
 
 	return (
 		<main
-			className="h-dvh min-w-240 overflow-hidden bg-surface-wash text-foreground"
+			className="relative h-dvh min-w-240 overflow-hidden bg-surface-wash text-foreground"
 			style={
 				{
 					"--font-project-primary": fontStack(
@@ -211,14 +209,26 @@ function EditorWorkspace({
 					onFeatureSettingsChange={applyTypeLensFeatures}
 				/>
 			) : (
-				<EditorCanvas
-					projectTitle={projectTitle}
-					projectUpdatedAt={projectUpdatedAt}
-					onProjectTitleChange={onProjectTitleChange}
-					onToggleInspector={() => setIsInspectorOpen((isOpen) => !isOpen)}
-					onSelectNode={() => setIsInspectorOpen(true)}
-					onOpenTemplates={setTemplateCardId}
-				/>
+				<div className="absolute inset-2 flex min-h-0 overflow-hidden rounded-2xl border border-white/60 bg-surface-glass shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur-3xl">
+					<EditorCanvas
+						projectTitle={projectTitle}
+						projectUpdatedAt={projectUpdatedAt}
+						onProjectTitleChange={onProjectTitleChange}
+						onToggleInspector={() => setIsInspectorOpen((isOpen) => !isOpen)}
+						onSelectNode={() => setIsInspectorOpen(true)}
+						onOpenTemplates={setTemplateCardId}
+					/>
+					{isInspectorOpen ? (
+						<EditorInspector
+							onClose={() => setIsInspectorOpen(false)}
+							fonts={{
+								primary,
+								sec1: secondaryOne,
+								sec2: secondaryTwo,
+							}}
+						/>
+					) : null}
+				</div>
 			)}
 			{templateCardId ? (
 				<TemplateSidebar
@@ -231,32 +241,17 @@ function EditorWorkspace({
 					}}
 				/>
 			) : null}
-			{!fontLabContext && isInspectorOpen ? (
-				<EditorInspector
-					onClose={() => setIsInspectorOpen(false)}
-					fonts={{
-						primary,
-						sec1: secondaryOne,
-						sec2: secondaryTwo,
-					}}
-				/>
-			) : !fontLabContext ? (
+			{!fontLabContext && !isInspectorOpen ? (
 				<Button
 					type="button"
 					aria-label="Open inspector"
 					variant="ghost"
 					size="icon"
-					className="fixed top-2.5 right-2.5 shadow-xl z-40 border border-white/60 bg-surface-glass shadow-hairline backdrop-blur-3xl"
+					className="absolute top-5 right-5 z-40 border border-white/60 bg-surface-glass shadow-hairline backdrop-blur-3xl"
 					onClick={() => setIsInspectorOpen(true)}
 				>
 					<PanelRightOpen />
 				</Button>
-			) : null}
-			{!fontLabContext ? (
-				<FontSystemPanel
-					open={fontManagerOpen}
-					onOpenChange={setFontManagerOpen}
-				/>
 			) : null}
 		</main>
 	);

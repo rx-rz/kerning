@@ -1,22 +1,7 @@
+@import '@fontsource-variable/instrument-sans/wght.css';
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 @import 'tw-animate-css';
-
-@font-face {
-  font-family: 'Geist';
-  src: url('/fonts/geist.woff2') format('woff2');
-  font-display: swap;
-  font-style: normal;
-  font-weight: 100 900;
-}
-
-@font-face {
-  font-family: 'Geist Mono';
-  src: url('/fonts/geist-mono.woff2') format('woff2');
-  font-display: swap;
-  font-style: normal;
-  font-weight: 100 900;
-}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -62,6 +47,7 @@
   --surface-paper: var(--paper);
   --surface-wash: var(--paper-soft);
   --surface-head: var(--paper-deep);
+  --surface-deep: var(--paper-deep);
 
   --surface-check: #F8F8F8;
 
@@ -174,6 +160,7 @@
   --surface-paper: var(--paper);
   --surface-wash: var(--paper-soft);
   --surface-head: var(--paper-deep);
+  --surface-deep: var(--paper-deep);
 
   --surface-check: #0C0C0C;
 
@@ -234,8 +221,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', sans-serif;
-  --font-mono: 'Geist Mono', monospace;
+  --font-sans: 'Instrument Sans Variable', sans-serif;
+  --font-mono: 'Instrument Sans Variable', sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -265,6 +252,7 @@
   --color-surface-wash: var(--surface-wash);
   --color-surface-check: var(--surface-check);
   --color-surface-head: var(--surface-head);
+  --color-surface-deep: var(--surface-deep);
   --color-surface-glass: var(--surface-glass);
   --color-component: var(--component);
   --color-component-deep: var(--component-deep);

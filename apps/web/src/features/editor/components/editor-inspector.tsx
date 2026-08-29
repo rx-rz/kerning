@@ -22,18 +22,20 @@ export function EditorInspector({ onClose, fonts }: EditorInspectorProps) {
 	);
 
 	return (
-		<aside className="fixed top-2 right-2 bottom-2 z-40 flex min-h-0 max-h-dvh w-[min(23rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-2xl border border-white/60 bg-surface-glass pt-2 shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur-3xl">
-			<Button
-				type="button"
-				aria-label="Close inspector"
-				variant="ghost"
-				size="icon-sm"
-				className="absolute top-3 right-3 z-10"
-				onClick={onClose}
-			>
-				<X />
-			</Button>
-			<div className="mt-8 flex min-h-0 flex-1 flex-col overflow-y-auto">
+		<aside className="z-40 flex h-full min-h-0 w-[min(23rem,calc(100vw-1rem))] shrink-0 flex-col overflow-hidden border-l border-hairline bg-surface-glass">
+			<header className="flex h-14 shrink-0 items-center justify-between border-b border-hairline px-4">
+				<h2 className="text-base font-semibold">Inspector</h2>
+				<Button
+					type="button"
+					aria-label="Close inspector"
+					variant="ghost"
+					size="icon-sm"
+					onClick={onClose}
+				>
+					<X />
+				</Button>
+			</header>
+			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
 				{selectedCard && selectedNode ? (
 					<NodeInspector
 						card={selectedCard}

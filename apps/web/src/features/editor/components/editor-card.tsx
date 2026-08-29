@@ -1,6 +1,8 @@
 import {
 	ImagePlus,
 	Layers3,
+	Lock,
+	LockOpen,
 	Settings2,
 	SwatchBook,
 	Trash2,
@@ -36,6 +38,8 @@ type EditorCardProps = {
 	onSelectNode?: () => void;
 	onOpenTemplates?: (cardId: string) => void;
 	onDelete: (id: string) => void;
+	isCardDragLocked?: boolean;
+	onToggleCardDragLock?: () => void;
 };
 
 export function EditorCard({
@@ -50,6 +54,8 @@ export function EditorCard({
 	onSelectNode,
 	onOpenTemplates,
 	onDelete,
+	isCardDragLocked = false,
+	onToggleCardDragLock,
 }: EditorCardProps) {
 	const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
 	const canDelete = useEditorStore((state) => state.cards.length > 1);
@@ -195,6 +201,29 @@ export function EditorCard({
 					>
 						<Settings2 className="size-3" />
 					</button>
+					{onToggleCardDragLock ? (
+						<button
+							type="button"
+							aria-label={
+								isCardDragLocked
+									? "Unlock card dragging"
+									: "Lock card dragging"
+							}
+							aria-pressed={isCardDragLocked}
+							className="card-control card-control-icon"
+							data-tooltip="Lock card dragging"
+							onClick={(event) => {
+								event.stopPropagation();
+								onToggleCardDragLock();
+							}}
+						>
+							{isCardDragLocked ? (
+								<Lock className="size-3" />
+							) : (
+								<LockOpen className="size-3" />
+							)}
+						</button>
+					) : null}
 					{canDelete ? (
 						<button
 							type="button"

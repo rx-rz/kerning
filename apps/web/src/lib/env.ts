@@ -10,5 +10,4 @@ const apiUrl = optionalEnv(
 
 export const publicEnv = {
 	apiUrl,
-	authUrl: optionalEnv(import.meta.env.VITE_AUTH_URL, `${apiUrl}/auth`),
 };

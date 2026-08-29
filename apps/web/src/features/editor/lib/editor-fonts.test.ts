@@ -90,7 +90,10 @@ describe("editor font helpers", () => {
 
 	it("decompresses WOFF2 fonts before outline parsing", async () => {
 		const source = await readFile(
-			new URL("../../../../public/fonts/geist.woff2", import.meta.url),
+			new URL(
+				"../../../../node_modules/@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-normal.woff2",
+				import.meta.url,
+			),
 		);
 		const prepared = await prepareFontBuffer(
 			source.buffer.slice(
@@ -104,7 +107,10 @@ describe("editor font helpers", () => {
 
 	it("shares decoder initialization across parallel WOFF2 preparations", async () => {
 		const source = await readFile(
-			new URL("../../../../public/fonts/geist.woff2", import.meta.url),
+			new URL(
+				"../../../../node_modules/@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-normal.woff2",
+				import.meta.url,
+			),
 		);
 		const buffer = source.buffer.slice(
 			source.byteOffset,

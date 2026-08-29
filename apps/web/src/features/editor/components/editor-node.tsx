@@ -200,11 +200,28 @@ export function EditorNode({
 						bottom: movesBottom || undefined,
 					},
 				);
-				useEditorStore.getState().updateNode(cardId, node.id, {
+				const nextBounds = {
 					width: round(result.bounds.width),
 					height: round(result.bounds.height),
 					x: round(result.bounds.x),
 					y: round(result.bounds.y),
+				};
+				const textScale = Math.min(
+					nextBounds.width / origin.width,
+					nextBounds.height / origin.height,
+				);
+				useEditorStore.getState().updateNode(cardId, node.id, {
+					...nextBounds,
+					// Scale from gesture origin so type preserves its fit without drift.
+					...(node.type === "text"
+						? {
+								fontSize: scaleTypographyValue(node.fontSize, textScale),
+								letterSpacing: scaleTypographyValue(
+									node.letterSpacing,
+									textScale,
+								),
+							}
+						: {}),
 				});
 				onGuidesChange(result.guides);
 			});
@@ -397,4 +414,8 @@ export function EditorNode({
 			) : null}
 		</div>
 	);
+}
+
+function scaleTypographyValue(value: number, scale: number) {
+	return Math.round(value * scale * 100) / 100;
 }

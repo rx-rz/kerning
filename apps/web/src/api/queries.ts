@@ -3,11 +3,6 @@ import {
 	mergeQueryKeys,
 } from "@lukemorales/query-key-factory";
 
-export const authKeys = createQueryKeys("auth", {
-	me: null,
-	oauth: (provider: "google") => [provider],
-});
-
 export const projectKeys = createQueryKeys("projects", {
 	list: null,
 	detail: (projectId: string) => [projectId],
@@ -22,4 +17,4 @@ export const googleFontKeys = createQueryKeys("googleFonts", {
 	}) => [input],
 });
 
-export const queries = mergeQueryKeys(authKeys, projectKeys, googleFontKeys);
+export const queries = mergeQueryKeys(projectKeys, googleFontKeys);

@@ -2,12 +2,10 @@ import useEmblaCarousel from "embla-carousel-react";
 import {
 	ChevronLeft,
 	ChevronRight,
-	Lock,
-	LockOpen,
 	Plus,
 	RectangleHorizontal,
 	Redo2,
-	RotateCcw,
+	Scan,
 	ScanEye,
 	Undo2,
 	ZoomIn,
@@ -73,7 +71,6 @@ export function EditorCanvas({
 	const selectCard = useEditorStore((state) => state.selectCard);
 	const addCard = useEditorStore((state) => state.addCard);
 	const deleteCard = useEditorStore((state) => state.deleteCard);
-	const resetEditor = useEditorStore((state) => state.resetEditor);
 	const updateCard = useEditorStore((state) => state.updateCard);
 	const undo = useEditorStore((state) => state.undo);
 	const redo = useEditorStore((state) => state.redo);
@@ -247,10 +244,6 @@ export function EditorCanvas({
 		addCard();
 	}
 
-	function resetAndSelectCard() {
-		resetEditor();
-	}
-
 	function adjustZoom(direction: -1 | 1) {
 		setZoom((currentZoom) =>
 			Math.min(
@@ -295,7 +288,7 @@ export function EditorCanvas({
 	return (
 		<section
 			aria-label="Editor preview"
-			className="check-card relative h-full min-h-0 overflow-hidden"
+			className="check-card relative h-full min-h-0 min-w-0 flex-1 overflow-hidden"
 			onKeyDown={(event) => {
 				if (event.key === "Escape") {
 					selectCard(null);
@@ -303,113 +296,152 @@ export function EditorCanvas({
 			}}
 			tabIndex={-1}
 		>
-			{!selectedCard && (
-				<div
-					aria-label="Project controls"
-					className="absolute top-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-white/60 bg-surface-glass p-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-3xl"
-					onPointerDown={(event) => event.stopPropagation()}
-					role="toolbar"
-				>
-					<input
-						aria-label="Project title"
-						className="w-40 rounded-md bg-transparent px-2 py-1 text-sm font-medium outline-none transition-colors hover:bg-muted/70 focus:bg-muted focus:ring-1 focus:ring-ring"
-						value={title}
-						onBlur={commitProjectTitle}
-						onChange={(event) => setTitle(event.target.value)}
-						onKeyDown={(event) => {
-							if (event.key === "Enter") event.currentTarget.blur();
-							if (event.key === "Escape") {
-								cancelTitleCommit.current = true;
-								setTitle(projectTitle);
-								event.currentTarget.blur();
-							}
-						}}
-					/>
-					<div className="h-5 w-px bg-border" />
-					<span className="px-2 font-mono text-[10px] text-muted-foreground">
-						{formatLastEdited(lastEditedAt)}
-					</span>
-				</div>
-			)}
-			{selectedCard ? (
-				<div
-					aria-label="Selected card controls"
-					className="absolute top-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-white/60 bg-surface-glass p-2 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-3xl"
-					onPointerDown={(event) => event.stopPropagation()}
-					role="toolbar"
-				>
-					<span className="px-2 font-mono text-[10px] font-semibold tabular-nums text-muted-foreground">
-						Card {selectedIndex + 1}
-					</span>
-					<div className="h-5 w-px bg-border" />
-					<input
-						aria-label="Card name"
-						className="w-40 rounded-md bg-transparent px-2 py-1 text-sm font-medium outline-none transition-colors hover:bg-muted/70 focus:bg-muted focus:ring-1 focus:ring-ring"
-						value={cardTitle}
-						onBlur={commitCardTitle}
-						onChange={(event) => setCardTitle(event.target.value)}
-						onKeyDown={(event) => {
-							if (event.key === "Enter") event.currentTarget.blur();
-							if (event.key === "Escape") {
-								cancelCardTitleCommit.current = true;
-								setCardTitle(selectedCard.name);
-								event.currentTarget.blur();
-							}
-						}}
-					/>
-					<div className="h-5 w-px bg-border" />
-					<CanvasProofSelect
-						value={canvasProofMode}
-						onChange={changeCanvasProof}
-					/>
-					<div className="h-5 w-px bg-border" />
-					<Button
-						type="button"
-						aria-label="Undo card change"
-						variant="ghost"
-						size="icon-sm"
-						disabled={!canUndo}
-						onClick={() => undo(selectedCard.id)}
-						title="Undo card change"
-					>
-						<Undo2 />
-					</Button>
-					<Button
-						type="button"
-						aria-label="Redo card change"
-						variant="ghost"
-						size="icon-sm"
-						disabled={!canRedo}
-						onClick={() => redo(selectedCard.id)}
-						title="Redo card change"
-					>
-						<Redo2 />
-					</Button>
-					<div className="h-5 w-px bg-border" />
-					<div className="group relative flex items-center">
+			<div
+				aria-label="Editor controls"
+				className="absolute inset-x-0 top-0 z-30 flex h-14 items-center gap-1 border-b border-hairline bg-surface-glass px-2"
+				onPointerDown={(event) => event.stopPropagation()}
+				role="toolbar"
+			>
+				{selectedCard ? (
+					<>
+						<input
+							aria-label="Card name"
+							className="w-60 rounded-md bg-transparent px-2 py-2 text-base font-medium outline-none transition-colors hover:bg-muted/70 focus:bg-muted focus:ring-1 focus:ring-ring"
+							value={cardTitle}
+							onBlur={commitCardTitle}
+							onChange={(event) => setCardTitle(event.target.value)}
+							onKeyDown={(event) => {
+								if (event.key === "Enter") event.currentTarget.blur();
+								if (event.key === "Escape") {
+									cancelCardTitleCommit.current = true;
+									setCardTitle(selectedCard.name);
+									event.currentTarget.blur();
+								}
+							}}
+						/>
+						<div className="h-5 w-px bg-border" />
+						<CanvasProofSelect
+							value={canvasProofMode}
+							onChange={changeCanvasProof}
+						/>
+						<div className="h-5 w-px bg-border" />
 						<Button
 							type="button"
-							aria-describedby="card-lock-tooltip"
-							aria-label={
-								isCardDragLocked ? "Unlock card dragging" : "Lock card dragging"
-							}
-							aria-pressed={isCardDragLocked}
-							variant={isCardDragLocked ? "secondary" : "ghost"}
+							aria-label="Undo card change"
+							variant="ghost"
 							size="icon-sm"
-							onClick={() => setIsCardDragLocked((isLocked) => !isLocked)}
+							disabled={!canUndo}
+							onClick={() => undo(selectedCard.id)}
+							title="Undo card change"
 						>
-							{isCardDragLocked ? <Lock /> : <LockOpen />}
+							<Undo2 />
 						</Button>
-						<span
-							id="card-lock-tooltip"
-							role="tooltip"
-							className="pointer-events-none absolute top-full left-1/2 mt-2 w-max max-w-56 -translate-x-1/2 rounded-md bg-foreground px-2.5 py-1.5 text-center text-xs text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+						<Button
+							type="button"
+							aria-label="Redo card change"
+							variant="ghost"
+							size="icon-sm"
+							disabled={!canRedo}
+							onClick={() => redo(selectedCard.id)}
+							title="Redo card change"
 						>
-							Lock to prevent dragging between cards while you edit.
+							<Redo2 />
+						</Button>
+					</>
+				) : (
+					<>
+						<input
+							aria-label="Project title"
+							className="w-40 rounded-md bg-transparent px-2 py-1 text-sm font-medium outline-none transition-colors hover:bg-muted/70 focus:bg-muted focus:ring-1 focus:ring-ring"
+							value={title}
+							onBlur={commitProjectTitle}
+							onChange={(event) => setTitle(event.target.value)}
+							onKeyDown={(event) => {
+								if (event.key === "Enter") event.currentTarget.blur();
+								if (event.key === "Escape") {
+									cancelTitleCommit.current = true;
+									setTitle(projectTitle);
+									event.currentTarget.blur();
+								}
+							}}
+						/>
+						<div className="h-5 w-px bg-border" />
+						<span className="px-2 font-mono text-[10px] text-muted-foreground">
+							{formatLastEdited(lastEditedAt)}
 						</span>
+					</>
+				)}
+				{cards.length ? (
+					<div className="flex items-center gap-1">
+						<div className="mx-1 h-5 w-px bg-border" />
+						<Button
+							type="button"
+							aria-label="Previous card"
+							variant="ghost"
+							size="icon-sm"
+							disabled={!hasPreviousCard}
+							onClick={() => selectCardAt(selectedIndex - 1)}
+						>
+							<ChevronLeft />
+						</Button>
+						<span className="min-w-12 text-center font-mono text-[10px] font-semibold tabular-nums text-muted-foreground">
+							{selectedIndex >= 0 ? selectedIndex + 1 : 0} / {cards.length}
+						</span>
+						<Button
+							type="button"
+							aria-label="Next card"
+							variant="ghost"
+							size="icon-sm"
+							disabled={!hasNextCard}
+							onClick={() => selectCardAt(selectedIndex + 1)}
+						>
+							<ChevronRight />
+						</Button>
+						<div className="mx-1 h-5 w-px bg-border" />
+						<Button
+							type="button"
+							aria-label="Zoom out"
+							variant="ghost"
+							size="icon-sm"
+							disabled={isCanvasProofActive || zoom <= MIN_ZOOM}
+							onClick={() => adjustZoom(-1)}
+						>
+							<ZoomOut />
+						</Button>
+						<output
+							aria-label={
+								isCanvasProofActive
+									? "Zoom unavailable during canvas proof"
+									: `Zoom: ${zoomPercentage}%`
+							}
+							className="min-w-11 px-1 py-1 text-center font-mono text-[10px] font-semibold tabular-nums text-muted-foreground"
+						>
+							{isCanvasProofActive ? "Proof" : `${zoomPercentage}%`}
+						</output>
+						<Button
+							type="button"
+							aria-label="Zoom in"
+							variant="ghost"
+							size="icon-sm"
+							disabled={isCanvasProofActive || zoom >= MAX_ZOOM}
+							onClick={() => adjustZoom(1)}
+						>
+							<ZoomIn />
+						</Button>
+						<Button
+							type="button"
+							aria-label="Fit canvas"
+							variant="ghost"
+							size="sm"
+							disabled={isCanvasProofActive}
+							onClick={() => setZoom(1)}
+						>
+							<Scan />
+							Fit canvas
+						</Button>
 					</div>
-				</div>
-			) : null}
+				) : null}
+			</div>
 
 			{cards.length ? (
 				<section
@@ -460,10 +492,34 @@ export function EditorCanvas({
 										onSelectNode={onSelectNode}
 										onOpenTemplates={onOpenTemplates}
 										onDelete={deleteCard}
+										isCardDragLocked={isCardDragLocked}
+										onToggleCardDragLock={() =>
+											setIsCardDragLocked((isLocked) => !isLocked)
+										}
 									/>
 								)}
 							</div>
 						))}
+						{!isCanvasProofActive && selectedCard ? (
+							<div className="relative flex-[0_0_auto]">
+								<button
+									type="button"
+									aria-label="Add new card"
+									className="flex items-center justify-center gap-3 border border-hairline bg-surface-deep text-sm font-semibold text-muted-foreground shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-colors hover:bg-surface-head hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+									style={{
+										width: selectedCard.width * zoom,
+										height: selectedCard.height * zoom,
+									}}
+									onClick={(event) => {
+										event.stopPropagation();
+										addAndSelectCard();
+									}}
+								>
+									<Plus className="size-5" />
+									Add new card
+								</button>
+							</div>
+						) : null}
 					</div>
 				</section>
 			) : (
@@ -491,93 +547,6 @@ export function EditorCanvas({
 			)}
 
 			<CardTickNavigator />
-
-			{cards.length ? (
-				<div
-					aria-label="Card navigation"
-					className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-white/60 bg-surface-glass p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-3xl"
-					onClick={(event) => event.stopPropagation()}
-					onKeyDown={(event) => event.stopPropagation()}
-					role="toolbar"
-				>
-					<Button
-						type="button"
-						aria-label="Previous card"
-						variant="ghost"
-						size="icon-sm"
-						disabled={!hasPreviousCard}
-						onClick={() => selectCardAt(selectedIndex - 1)}
-					>
-						<ChevronLeft />
-					</Button>
-					<span className="min-w-12 text-center font-mono text-[10px] font-semibold tabular-nums text-muted-foreground">
-						{selectedIndex >= 0 ? selectedIndex + 1 : 0} / {cards.length}
-					</span>
-					<Button
-						type="button"
-						aria-label="Next card"
-						variant="ghost"
-						size="icon-sm"
-						disabled={!hasNextCard}
-						onClick={() => selectCardAt(selectedIndex + 1)}
-					>
-						<ChevronRight />
-					</Button>
-					<div className="mx-1 h-5 w-px bg-border" />
-					<Button
-						type="button"
-						aria-label="Add Card"
-						variant="ghost"
-						size="icon-sm"
-						onClick={addAndSelectCard}
-					>
-						<Plus />
-					</Button>
-					<Button
-						type="button"
-						aria-label="Reset"
-						variant="ghost"
-						size="icon-sm"
-						onClick={resetAndSelectCard}
-					>
-						<RotateCcw />
-					</Button>
-					<div className="mx-1 h-5 w-px bg-border" />
-					<Button
-						type="button"
-						aria-label="Zoom out"
-						variant="ghost"
-						size="icon-sm"
-						disabled={isCanvasProofActive || zoom <= MIN_ZOOM}
-						onClick={() => adjustZoom(-1)}
-					>
-						<ZoomOut />
-					</Button>
-					<button
-						type="button"
-						aria-label={
-							isCanvasProofActive
-								? "Zoom unavailable during canvas proof"
-								: `Reset zoom from ${zoomPercentage}%`
-						}
-						className="min-w-11 rounded-md px-1 py-1 font-mono text-[10px] font-semibold tabular-nums text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-						disabled={isCanvasProofActive}
-						onClick={() => setZoom(1)}
-					>
-						{isCanvasProofActive ? "Proof" : `${zoomPercentage}%`}
-					</button>
-					<Button
-						type="button"
-						aria-label="Zoom in"
-						variant="ghost"
-						size="icon-sm"
-						disabled={isCanvasProofActive || zoom >= MAX_ZOOM}
-						onClick={() => adjustZoom(1)}
-					>
-						<ZoomIn />
-					</Button>
-				</div>
-			) : null}
 		</section>
 	);
 }

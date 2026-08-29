@@ -1008,11 +1008,21 @@ describe("editor components", () => {
 		});
 	});
 
-	it("resizes a text node without changing its font size", () => {
+	it("scales text typography with its resized container", () => {
 		renderEditorParts();
 		fireEvent.click(
 			screen.getByRole("button", { name: "Add text to Untitled Card" }),
 		);
+		const card = useEditorStore.getState().cards[0];
+		const textNode = card?.nodes[0];
+		if (!card || !textNode || textNode.type !== "text") {
+			throw new Error("Expected a text node");
+		}
+		act(() => {
+			useEditorStore.getState().updateNode(card.id, textNode.id, {
+				letterSpacing: 2,
+			});
+		});
 
 		const handle = screen.getByRole("button", { name: "Resize text node" });
 		Object.defineProperty(handle, "setPointerCapture", { value: vi.fn() });
@@ -1023,7 +1033,8 @@ describe("editor components", () => {
 		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
 			width: 270,
 			height: 98,
-			fontSize: 20,
+			fontSize: 24.55,
+			letterSpacing: 2.45,
 		});
 	});
 
@@ -1159,24 +1170,19 @@ describe("editor components", () => {
 		});
 	});
 
-	it("adds and resets cards from the preview controls", () => {
+	it("adds cards from the spatial canvas tile", () => {
 		renderEditorParts();
 
-		fireEvent.click(screen.getByRole("button", { name: "Add Card" }));
+		fireEvent.click(screen.getByRole("button", { name: "Add new card" }));
 		expect(useEditorStore.getState().cards).toHaveLength(2);
 		expect(
 			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
 		).toBe("Untitled Card 2");
-
-		fireEvent.click(screen.getByRole("button", { name: "Reset" }));
-		expect(
-			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
-		).toBe("Untitled Card");
 	});
 
 	it("selects a card from the tick navigator", () => {
 		renderEditorParts();
-		fireEvent.click(screen.getByRole("button", { name: "Add Card" }));
+		fireEvent.click(screen.getByRole("button", { name: "Add new card" }));
 
 		fireEvent.click(
 			screen.getByRole("button", { name: "Go to Untitled Card" }),
@@ -1190,7 +1196,7 @@ describe("editor components", () => {
 	it("moves between adjacent cards from the preview navigation", () => {
 		renderEditorParts();
 
-		fireEvent.click(screen.getByRole("button", { name: "Add Card" }));
+		fireEvent.click(screen.getByRole("button", { name: "Add new card" }));
 		expect(
 			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
 		).toBe("Untitled Card 2");
@@ -1233,15 +1239,13 @@ describe("editor components", () => {
 		expect(useEditorStore.getState().cards[0]?.name).toBe("Front cover");
 
 		const lock = screen.getByRole("button", { name: "Lock card dragging" });
+		expect(lock.closest(".card-control-tray")).toBeTruthy();
 		fireEvent.click(lock);
 		expect(
 			screen
 				.getByRole("button", { name: "Unlock card dragging" })
 				.getAttribute("aria-pressed"),
 		).toBe("true");
-		expect(screen.getByRole("tooltip").textContent).toContain(
-			"prevent dragging between cards",
-		);
 	});
 
 	it("previews content stress copy without changing the saved card", () => {
@@ -1330,10 +1334,12 @@ describe("editor components", () => {
 			true,
 		);
 		expect(
-			screen.getByRole("button", {
-				name: "Zoom unavailable during canvas proof",
-			}),
-		).toHaveProperty("disabled", true);
+			screen.getByLabelText("Zoom unavailable during canvas proof"),
+		).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Fit canvas" })).toHaveProperty(
+			"disabled",
+			true,
+		);
 		expect(document.querySelectorAll('[data-card-proof="true"]')).toHaveLength(
 			3,
 		);
@@ -1385,7 +1391,7 @@ describe("editor components", () => {
 
 	it("moves between cards with wheel scrolling", () => {
 		renderEditorParts();
-		fireEvent.click(screen.getByRole("button", { name: "Add Card" }));
+		fireEvent.click(screen.getByRole("button", { name: "Add new card" }));
 
 		fireEvent.wheel(screen.getByLabelText("Scrollable cards"), {
 			deltaY: -100,
@@ -1403,9 +1409,7 @@ describe("editor components", () => {
 		expect(card.style.width).toBe("560px");
 		fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
 		expect(card.style.width).toBe("616px");
-		expect(
-			screen.getByRole("button", { name: "Reset zoom from 110%" }),
-		).toBeTruthy();
+		expect(screen.getByLabelText("Zoom: 110%")).toBeTruthy();
 
 		for (let index = 0; index < 12; index += 1) {
 			fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
@@ -1416,7 +1420,7 @@ describe("editor components", () => {
 			true,
 		);
 
-		fireEvent.click(screen.getByRole("button", { name: /Reset zoom/ }));
+		fireEvent.click(screen.getByRole("button", { name: "Fit canvas" }));
 		for (let index = 0; index < 6; index += 1) {
 			fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
 		}
@@ -1434,9 +1438,7 @@ describe("editor components", () => {
 			deltaY: -100,
 		});
 
-		expect(
-			screen.getByRole("button", { name: "Reset zoom from 110%" }),
-		).toBeTruthy();
+		expect(screen.getByLabelText("Zoom: 110%")).toBeTruthy();
 	});
 
 	it("converts pointer movement back into document coordinates while zoomed", () => {

@@ -131,7 +131,8 @@ export function CardInspector({ card }: CardInspectorProps) {
 					</div>
 				</section>
 			) : null}
-			<div className="space-y-2">
+			<InspectorSection title="Card">
+				<div className="space-y-2">
 				<Field className="space-y-0">
 					<Input
 						id="card-name"
@@ -207,7 +208,8 @@ export function CardInspector({ card }: CardInspectorProps) {
 					value={card.height}
 					onChange={(value) => updateNumericValue("height", value)}
 				/>
-			</div>
+				</div>
+			</InspectorSection>
 
 			<InspectorSection title="Surface">
 				<Slider

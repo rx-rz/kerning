@@ -71,12 +71,9 @@ function LandingPage() {
 						</a>
 					</div>
 
-					<Button asChild variant="ghost" className="ms-auto md:ms-0">
-						<Link to={APP_ROUTES.LOGIN}>Sign in</Link>
-					</Button>
-					<Button asChild className="hidden sm:inline-flex">
-						<Link to={APP_ROUTES.SIGNUP}>
-							Start creating
+					<Button asChild className="ms-auto">
+						<Link to={APP_ROUTES.DEMO}>
+							Open demo
 							<ArrowRight />
 						</Link>
 					</Button>
@@ -98,8 +95,8 @@ function LandingPage() {
 							</p>
 							<div className="mt-9 flex flex-wrap gap-3">
 								<Button asChild size="lg" className="bg-[#141414] text-white hover:bg-black">
-									<Link to={APP_ROUTES.SIGNUP}>
-										Start a project
+									<Link to={APP_ROUTES.DEMO}>
+										Open the demo
 										<ArrowRight />
 									</Link>
 								</Button>
@@ -207,8 +204,8 @@ function LandingPage() {
 							<p className="mt-4 text-white/65">Create a project and put the fonts through their paces.</p>
 						</div>
 						<Button asChild size="lg" className="shrink-0 bg-[#fed503] text-black hover:bg-[#ffe04d]">
-							<Link to={APP_ROUTES.SIGNUP}>
-								Start creating
+							<Link to={APP_ROUTES.DEMO}>
+								Open demo
 								<ArrowRight />
 							</Link>
 						</Button>
@@ -220,7 +217,7 @@ function LandingPage() {
 				<p>© {new Date().getFullYear()} Kerning.</p>
 				<div className="flex gap-5">
 					<Link to="/about" className="hover:text-foreground">About</Link>
-					<Link to={APP_ROUTES.LOGIN} className="hover:text-foreground">Sign in</Link>
+					<Link to={APP_ROUTES.DEMO} className="hover:text-foreground">Demo</Link>
 				</div>
 			</footer>
 		</div>
