@@ -15,6 +15,9 @@ import {
 import { useEditorStore } from "#/features/editor/store/editor-store";
 import { cn } from "#/lib/utils";
 
+const cardControlClassName =
+	"relative inline-flex size-8 items-center justify-center gap-1.5 rounded-full border border-hairline bg-paper px-3 font-mono text-[10px] font-medium leading-none tracking-[0.08em] text-ink uppercase shadow-[0_1px_0_rgba(20,20,20,0.04)] transition-[background-color,border-color,transform] duration-150 ease-[ease] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--ink)_28%,transparent)] hover:bg-paper-soft focus-visible:outline-2 focus-visible:outline-[color-mix(in_srgb,var(--ring)_45%,transparent)] focus-visible:outline-offset-2 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-[0.42] after:pointer-events-none after:absolute after:top-[calc(100%+0.45rem)] after:left-1/2 after:z-[90] after:w-max after:max-w-40 after:-translate-x-1/2 after:-translate-y-[0.2rem] after:rounded-md after:bg-foreground after:px-[0.45rem] after:py-[0.3rem] after:font-sans after:text-[0.625rem] after:font-semibold after:leading-4 after:whitespace-nowrap after:text-background after:opacity-0 after:content-[attr(data-tooltip)] after:transition-[opacity,transform] after:duration-150 after:ease-[ease] hover:after:translate-y-0 hover:after:opacity-100 focus-visible:after:translate-y-0 focus-visible:after:opacity-100";
+
 export function ShapePicker({
 	cardId,
 	cardName,
@@ -41,7 +44,7 @@ export function ShapePicker({
 				<button
 					type="button"
 					aria-label={`Add shape to ${cardName}`}
-					className="card-control card-control-icon"
+					className={cardControlClassName}
 					data-tooltip="Add shape"
 					onClick={(event) => event.stopPropagation()}
 				>

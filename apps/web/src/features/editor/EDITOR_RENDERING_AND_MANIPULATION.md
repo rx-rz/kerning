@@ -310,7 +310,7 @@ style={{
 
 The inner card retains logical dimensions and scales from its top-left corner. This prevents layout from treating a transformed card as though it still occupied only unscaled space.
 
-Selected cards expose a compact icon tray for adding text, images, and shapes; opening templates and card settings; and deleting the card when more than one exists. A separate control below the card toggles the layer list. Tooltips are supplied by the shared `card-control` styling.
+Selected cards expose a compact icon tray for adding text, images, and shapes; opening templates and card settings; and deleting the card when more than one exists. A separate control below the card toggles the layer list. Their Tailwind utilities supply tooltips directly in the owning components.
 
 The card owns one `smartGuides` array and passes its setter to every node. Only an active gesture populates it; completion clears it.
 

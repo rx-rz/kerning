@@ -938,19 +938,19 @@ describe("editor components", () => {
 		expect(clickFileInput).toHaveBeenCalledOnce();
 	});
 
-	it("deletes a node from its attached control", () => {
+	it("deletes a selected node with the Delete key", () => {
 		renderEditorParts();
 		fireEvent.click(
 			screen.getByRole("button", { name: "Add text to Untitled Card" }),
 		);
 
-		const deleteButton = screen.getByRole("button", {
-			name: "Delete text node from card",
-		});
-		expect(deleteButton.className).toContain("top-1");
-		expect(deleteButton.className).toContain("right-1");
-		expect(deleteButton.className).not.toContain("translate-x-1/2");
-		fireEvent.click(deleteButton);
+		expect(
+			screen.queryByRole("button", { name: "Delete text node from card" }),
+		).toBeNull();
+		expect(
+			document.querySelectorAll("[data-editor-node-resize-handle]"),
+		).toHaveLength(4);
+		fireEvent.keyDown(window, { key: "Delete" });
 
 		expect(useEditorStore.getState().cards[0]?.nodes).toHaveLength(0);
 		expect(useEditorStore.getState().selectedNodeId).toBeNull();
@@ -974,7 +974,9 @@ describe("editor components", () => {
 			screen.getByRole("button", { name: "Add image to Untitled Card" }),
 		);
 
-		const handle = screen.getByRole("button", { name: "Resize image node" });
+		const handle = screen.getByRole("button", {
+			name: "Resize image node from se",
+		});
 		Object.defineProperty(handle, "setPointerCapture", { value: vi.fn() });
 		fireEvent.pointerDown(handle, { pointerId: 1, clientX: 100, clientY: 100 });
 		fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150, clientY: 130 });
@@ -988,14 +990,14 @@ describe("editor components", () => {
 		expect(state.selectedNodeId).toBe(state.cards[0]?.nodes[0]?.id);
 	});
 
-	it("resizes a node from its left edge without crossing the card", () => {
+	it("resizes a node from its top-left corner without crossing the card", () => {
 		renderEditorParts();
 		fireEvent.click(
 			screen.getByRole("button", { name: "Add image to Untitled Card" }),
 		);
 
 		const handle = screen.getByRole("button", {
-			name: "Resize image node from w",
+			name: "Resize image node from nw",
 		});
 		Object.defineProperty(handle, "setPointerCapture", { value: vi.fn() });
 		fireEvent.pointerDown(handle, { pointerId: 1, clientX: 100, clientY: 100 });
@@ -1008,7 +1010,7 @@ describe("editor components", () => {
 		});
 	});
 
-	it("scales text typography with its resized container", () => {
+	it("keeps text typography unchanged while resizing", () => {
 		renderEditorParts();
 		fireEvent.click(
 			screen.getByRole("button", { name: "Add text to Untitled Card" }),
@@ -1024,7 +1026,9 @@ describe("editor components", () => {
 			});
 		});
 
-		const handle = screen.getByRole("button", { name: "Resize text node" });
+		const handle = screen.getByRole("button", {
+			name: "Resize text node from se",
+		});
 		Object.defineProperty(handle, "setPointerCapture", { value: vi.fn() });
 		fireEvent.pointerDown(handle, { pointerId: 1, clientX: 100, clientY: 100 });
 		fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150, clientY: 140 });
@@ -1033,8 +1037,8 @@ describe("editor components", () => {
 		expect(useEditorStore.getState().cards[0]?.nodes[0]).toMatchObject({
 			width: 270,
 			height: 98,
-			fontSize: 24.55,
-			letterSpacing: 2.45,
+			fontSize: 20,
+			letterSpacing: 2,
 		});
 	});
 
@@ -1049,7 +1053,9 @@ describe("editor components", () => {
 			configurable: true,
 			value: 1000,
 		});
-		const handle = screen.getByRole("button", { name: "Resize text width" });
+		const handle = screen.getByRole("button", {
+			name: "Resize text node from se",
+		});
 		Object.defineProperty(handle, "setPointerCapture", { value: vi.fn() });
 		fireEvent.pointerDown(handle, { pointerId: 1, clientX: 100, clientY: 100 });
 		fireEvent.pointerMove(handle, {
@@ -1175,9 +1181,9 @@ describe("editor components", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "Add new card" }));
 		expect(useEditorStore.getState().cards).toHaveLength(2);
-		expect(
-			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
-		).toBe("Untitled Card 2");
+		expect(useEditorStore.getState().selectedCardId).toBe(
+			useEditorStore.getState().cards[1]?.id,
+		);
 	});
 
 	it("selects a card from the tick navigator", () => {
@@ -1188,33 +1194,20 @@ describe("editor components", () => {
 			screen.getByRole("button", { name: "Go to Untitled Card" }),
 		);
 
-		expect(
-			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
-		).toBe("Untitled Card");
+		expect(useEditorStore.getState().selectedCardId).toBe(
+			useEditorStore.getState().cards[0]?.id,
+		);
 	});
 
-	it("moves between adjacent cards from the preview navigation", () => {
+	it("removes preview card navigator controls", () => {
 		renderEditorParts();
 
-		fireEvent.click(screen.getByRole("button", { name: "Add new card" }));
-		expect(
-			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
-		).toBe("Untitled Card 2");
-
-		fireEvent.click(screen.getByRole("button", { name: "Previous card" }));
-		expect(
-			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
-		).toBe("Untitled Card");
-
-		fireEvent.click(screen.getByRole("button", { name: "Next card" }));
-		expect(
-			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
-		).toBe("Untitled Card 2");
+		expect(screen.queryByRole("button", { name: "Previous card" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Next card" })).toBeNull();
 	});
 
 	it("edits the project title and toggles the card drag lock", () => {
 		const onProjectTitleChange = vi.fn();
-		act(() => useEditorStore.getState().selectCard(null));
 		render(
 			<EditorCanvas
 				projectTitle="Brand exploration"
@@ -1226,20 +1219,19 @@ describe("editor components", () => {
 		fireEvent.change(title, { target: { value: "Launch campaign" } });
 		fireEvent.blur(title);
 		expect(onProjectTitleChange).toHaveBeenCalledWith("Launch campaign");
-		expect(screen.getByText(/^Last edited /).textContent).not.toBe(
-			"Last edited —",
-		);
 		fireEvent.click(
 			screen.getByRole("button", { name: "Go to Untitled Card" }),
 		);
 
-		const cardName = screen.getByRole("textbox", { name: "Card name" });
-		fireEvent.change(cardName, { target: { value: "Front cover" } });
-		fireEvent.blur(cardName);
-		expect(useEditorStore.getState().cards[0]?.name).toBe("Front cover");
+		expect(screen.queryByRole("textbox", { name: "Card name" })).toBeNull();
+		expect(
+			screen
+				.getByRole("textbox", { name: "Project title" })
+				.getAttribute("value"),
+		).toBe("Launch campaign");
 
 		const lock = screen.getByRole("button", { name: "Lock card dragging" });
-		expect(lock.closest(".card-control-tray")).toBeTruthy();
+		expect(lock.closest('[data-slot="card-control-tray"]')).toBeTruthy();
 		fireEvent.click(lock);
 		expect(
 			screen
@@ -1336,10 +1328,7 @@ describe("editor components", () => {
 		expect(
 			screen.getByLabelText("Zoom unavailable during canvas proof"),
 		).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Fit canvas" })).toHaveProperty(
-			"disabled",
-			true,
-		);
+		expect(screen.queryByRole("button", { name: "Fit canvas" })).toBeNull();
 		expect(document.querySelectorAll('[data-card-proof="true"]')).toHaveLength(
 			3,
 		);
@@ -1397,9 +1386,9 @@ describe("editor components", () => {
 			deltaY: -100,
 		});
 
-		expect(
-			screen.getByRole("textbox", { name: "Card name" }).getAttribute("value"),
-		).toBe("Untitled Card");
+		expect(useEditorStore.getState().selectedCardId).toBe(
+			useEditorStore.getState().cards[0]?.id,
+		);
 	});
 
 	it("zooms the canvas between fifty and one hundred fifty percent", () => {
@@ -1420,8 +1409,7 @@ describe("editor components", () => {
 			true,
 		);
 
-		fireEvent.click(screen.getByRole("button", { name: "Fit canvas" }));
-		for (let index = 0; index < 6; index += 1) {
+		for (let index = 0; index < 10; index += 1) {
 			fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
 		}
 		expect(card.style.width).toBe("280px");

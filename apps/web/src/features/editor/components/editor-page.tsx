@@ -62,7 +62,6 @@ export function ProjectEditorPage({ projectId }: { projectId: string }) {
 	return (
 		<EditorWorkspace
 			projectTitle={data?.project.name}
-			projectUpdatedAt={data?.project.updatedAt}
 			onProjectTitleChange={(name) => updateProject.mutate({ name })}
 			primary={primary}
 			secondaryOne={secondaryOne}
@@ -74,7 +73,6 @@ export function ProjectEditorPage({ projectId }: { projectId: string }) {
 
 function EditorWorkspace({
 	projectTitle,
-	projectUpdatedAt,
 	onProjectTitleChange,
 	primary,
 	secondaryOne,
@@ -82,7 +80,6 @@ function EditorWorkspace({
 	projectFonts,
 }: {
 	projectTitle?: string;
-	projectUpdatedAt?: string;
 	onProjectTitleChange?: (title: string) => void;
 	primary?: ProjectFontEntity;
 	secondaryOne?: ProjectFontEntity;
@@ -209,10 +206,9 @@ function EditorWorkspace({
 					onFeatureSettingsChange={applyTypeLensFeatures}
 				/>
 			) : (
-				<div className="absolute inset-2 flex min-h-0 overflow-hidden rounded-2xl border border-white/60 bg-surface-glass shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur-3xl">
+				<div className="absolute  flex min-h-0 overflow-hidden inset-0 border border-white/60 bg-surface-glass shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur-3xl">
 					<EditorCanvas
 						projectTitle={projectTitle}
-						projectUpdatedAt={projectUpdatedAt}
 						onProjectTitleChange={onProjectTitleChange}
 						onToggleInspector={() => setIsInspectorOpen((isOpen) => !isOpen)}
 						onSelectNode={() => setIsInspectorOpen(true)}
@@ -247,7 +243,7 @@ function EditorWorkspace({
 					aria-label="Open inspector"
 					variant="ghost"
 					size="icon"
-					className="absolute top-5 right-5 z-40 border border-white/60 bg-surface-glass shadow-hairline backdrop-blur-3xl"
+					className="absolute top-2 right-3 z-40  border bg-white shadow-hairline backdrop-blur-3xl"
 					onClick={() => setIsInspectorOpen(true)}
 				>
 					<PanelRightOpen />

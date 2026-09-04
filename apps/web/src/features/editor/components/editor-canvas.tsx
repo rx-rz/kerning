@@ -1,37 +1,21 @@
 import useEmblaCarousel from "embla-carousel-react";
-import {
-	ChevronLeft,
-	ChevronRight,
-	Plus,
-	RectangleHorizontal,
-	Redo2,
-	Scan,
-	ScanEye,
-	Undo2,
-	ZoomIn,
-	ZoomOut,
-} from "lucide-react";
+import { Plus, RectangleHorizontal } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "#/components/ui/button";
+import { deleteEditorImage } from "#/db/image-db";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "#/components/ui/popover";
-import {
-	CANVAS_PROOF_OPTIONS,
 	type CanvasProofMode,
 	CanvasProofPreview,
 } from "#/features/editor/components/canvas-proof-preview";
 import { CardTickNavigator } from "#/features/editor/components/card-tick-navigator";
+import { EditorCanvasNavbar } from "#/features/editor/components/editor-canvas-navbar";
 import { EditorCard } from "#/features/editor/components/editor-card";
 import { createNodeContentStressPreview } from "#/features/editor/lib/content-stress";
 import { useEditorStore } from "#/features/editor/store/editor-store";
 
 type EditorCanvasProps = {
 	projectTitle?: string;
-	projectUpdatedAt?: string;
 	onProjectTitleChange?: (title: string) => void;
 	onToggleInspector?: () => void;
 	onSelectNode?: () => void;
@@ -44,7 +28,6 @@ const ZOOM_STEP = 0.1;
 
 export function EditorCanvas({
 	projectTitle = "Untitled Project",
-	projectUpdatedAt,
 	onProjectTitleChange,
 	onToggleInspector,
 	onSelectNode,
@@ -52,15 +35,10 @@ export function EditorCanvas({
 }: EditorCanvasProps) {
 	const [zoom, setZoom] = useState(1);
 	const [isCardDragLocked, setIsCardDragLocked] = useState(false);
-	const [title, setTitle] = useState(projectTitle);
-	const [lastEditedAt, setLastEditedAt] = useState<string | null>(null);
-	const [cardTitle, setCardTitle] = useState("");
 	const [canvasProof, setCanvasProof] = useState<{
 		cardId: string;
 		mode: Exclude<CanvasProofMode, "none">;
 	} | null>(null);
-	const cancelTitleCommit = useRef(false);
-	const cancelCardTitleCommit = useRef(false);
 	const cards = useEditorStore((state) => state.cards);
 	const selectedCardId = useEditorStore((state) => state.selectedCardId);
 	const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
@@ -71,7 +49,6 @@ export function EditorCanvas({
 	const selectCard = useEditorStore((state) => state.selectCard);
 	const addCard = useEditorStore((state) => state.addCard);
 	const deleteCard = useEditorStore((state) => state.deleteCard);
-	const updateCard = useEditorStore((state) => state.updateCard);
 	const undo = useEditorStore((state) => state.undo);
 	const redo = useEditorStore((state) => state.redo);
 	const canUndo = useEditorStore((state) =>
@@ -99,8 +76,6 @@ export function EditorCanvas({
 	const lastWheelNavigationAt = useRef(0);
 	const selectedIndex = cards.findIndex((card) => card.id === selectedCardId);
 	const selectedCard = selectedIndex >= 0 ? cards[selectedIndex] : undefined;
-	const hasPreviousCard = selectedIndex > 0;
-	const hasNextCard = selectedIndex >= 0 && selectedIndex < cards.length - 1;
 	const zoomPercentage = Math.round(zoom * 100);
 	const selectedTextNode = selectedCard?.nodes.find(
 		(node) => node.id === selectedNodeId && node.type === "text",
@@ -128,18 +103,6 @@ export function EditorCanvas({
 			mode: value as Exclude<CanvasProofMode, "none">,
 		});
 	}
-
-	useEffect(() => {
-		setTitle(projectTitle);
-	}, [projectTitle]);
-
-	useEffect(() => {
-		setLastEditedAt(projectUpdatedAt ?? null);
-	}, [projectUpdatedAt]);
-
-	useEffect(() => {
-		setCardTitle(selectedCard?.name ?? "");
-	}, [selectedCard?.name]);
 
 	const previousSelection = useRef({ selectedCardId, selectedNodeId });
 	useEffect(() => {
@@ -169,31 +132,33 @@ export function EditorCanvas({
 		return () => window.removeEventListener("keydown", handleHistoryShortcut);
 	}, [redo, selectedCardId, undo]);
 
-	function commitProjectTitle() {
-		if (cancelTitleCommit.current) {
-			cancelTitleCommit.current = false;
-			return;
-		}
-		const nextTitle = title.trim() || projectTitle;
-		setTitle(nextTitle);
-		if (nextTitle !== projectTitle) {
-			onProjectTitleChange?.(nextTitle);
-			setLastEditedAt(new Date().toISOString());
-		}
-	}
+	useEffect(() => {
+		function handleNodeDelete(event: KeyboardEvent) {
+			if (event.key !== "Delete" || !selectedCardId || !selectedNodeId) return;
+			const target = event.target;
+			if (
+				target instanceof HTMLInputElement ||
+				target instanceof HTMLSelectElement ||
+				(target instanceof HTMLTextAreaElement && !target.readOnly) ||
+				(target instanceof HTMLElement && target.isContentEditable)
+			)
+				return;
+			const card = useEditorStore
+				.getState()
+				.cards.find(({ id }) => id === selectedCardId);
+			const node = card?.nodes.find(({ id }) => id === selectedNodeId);
+			if (!card || !node) return;
 
-	function commitCardTitle() {
-		if (cancelCardTitleCommit.current) {
-			cancelCardTitleCommit.current = false;
-			return;
+			event.preventDefault();
+			if (node.type === "image" && node.imageId) {
+				void deleteEditorImage(node.imageId);
+			}
+			useEditorStore.getState().deleteNode(card.id, node.id);
 		}
-		if (!selectedCard) return;
-		const nextTitle = cardTitle.trim() || selectedCard.name;
-		setCardTitle(nextTitle);
-		if (nextTitle !== selectedCard.name) {
-			updateCard(selectedCard.id, { name: nextTitle });
-		}
-	}
+
+		window.addEventListener("keydown", handleNodeDelete);
+		return () => window.removeEventListener("keydown", handleNodeDelete);
+	}, [selectedCardId, selectedNodeId]);
 
 	const syncSelectionFromCarousel = useCallback(() => {
 		if (!emblaApi) {
@@ -288,7 +253,7 @@ export function EditorCanvas({
 	return (
 		<section
 			aria-label="Editor preview"
-			className="check-card relative h-full min-h-0 min-w-0 flex-1 overflow-hidden"
+			className="relative h-full min-h-0 min-w-0 flex-1 overflow-hidden "
 			onKeyDown={(event) => {
 				if (event.key === "Escape") {
 					selectCard(null);
@@ -296,158 +261,30 @@ export function EditorCanvas({
 			}}
 			tabIndex={-1}
 		>
-			<div
-				aria-label="Editor controls"
-				className="absolute inset-x-0 top-0 z-30 flex h-14 items-center gap-1 border-b border-hairline bg-surface-glass px-2"
-				onPointerDown={(event) => event.stopPropagation()}
-				role="toolbar"
-			>
-				{selectedCard ? (
-					<>
-						<input
-							aria-label="Card name"
-							className="w-60 rounded-md bg-transparent px-2 py-2 text-base font-medium outline-none transition-colors hover:bg-muted/70 focus:bg-muted focus:ring-1 focus:ring-ring"
-							value={cardTitle}
-							onBlur={commitCardTitle}
-							onChange={(event) => setCardTitle(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter") event.currentTarget.blur();
-								if (event.key === "Escape") {
-									cancelCardTitleCommit.current = true;
-									setCardTitle(selectedCard.name);
-									event.currentTarget.blur();
-								}
-							}}
-						/>
-						<div className="h-5 w-px bg-border" />
-						<CanvasProofSelect
-							value={canvasProofMode}
-							onChange={changeCanvasProof}
-						/>
-						<div className="h-5 w-px bg-border" />
-						<Button
-							type="button"
-							aria-label="Undo card change"
-							variant="ghost"
-							size="icon-sm"
-							disabled={!canUndo}
-							onClick={() => undo(selectedCard.id)}
-							title="Undo card change"
-						>
-							<Undo2 />
-						</Button>
-						<Button
-							type="button"
-							aria-label="Redo card change"
-							variant="ghost"
-							size="icon-sm"
-							disabled={!canRedo}
-							onClick={() => redo(selectedCard.id)}
-							title="Redo card change"
-						>
-							<Redo2 />
-						</Button>
-					</>
-				) : (
-					<>
-						<input
-							aria-label="Project title"
-							className="w-40 rounded-md bg-transparent px-2 py-1 text-sm font-medium outline-none transition-colors hover:bg-muted/70 focus:bg-muted focus:ring-1 focus:ring-ring"
-							value={title}
-							onBlur={commitProjectTitle}
-							onChange={(event) => setTitle(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter") event.currentTarget.blur();
-								if (event.key === "Escape") {
-									cancelTitleCommit.current = true;
-									setTitle(projectTitle);
-									event.currentTarget.blur();
-								}
-							}}
-						/>
-						<div className="h-5 w-px bg-border" />
-						<span className="px-2 font-mono text-[10px] text-muted-foreground">
-							{formatLastEdited(lastEditedAt)}
-						</span>
-					</>
-				)}
-				{cards.length ? (
-					<div className="flex items-center gap-1">
-						<div className="mx-1 h-5 w-px bg-border" />
-						<Button
-							type="button"
-							aria-label="Previous card"
-							variant="ghost"
-							size="icon-sm"
-							disabled={!hasPreviousCard}
-							onClick={() => selectCardAt(selectedIndex - 1)}
-						>
-							<ChevronLeft />
-						</Button>
-						<span className="min-w-12 text-center font-mono text-[10px] font-semibold tabular-nums text-muted-foreground">
-							{selectedIndex >= 0 ? selectedIndex + 1 : 0} / {cards.length}
-						</span>
-						<Button
-							type="button"
-							aria-label="Next card"
-							variant="ghost"
-							size="icon-sm"
-							disabled={!hasNextCard}
-							onClick={() => selectCardAt(selectedIndex + 1)}
-						>
-							<ChevronRight />
-						</Button>
-						<div className="mx-1 h-5 w-px bg-border" />
-						<Button
-							type="button"
-							aria-label="Zoom out"
-							variant="ghost"
-							size="icon-sm"
-							disabled={isCanvasProofActive || zoom <= MIN_ZOOM}
-							onClick={() => adjustZoom(-1)}
-						>
-							<ZoomOut />
-						</Button>
-						<output
-							aria-label={
-								isCanvasProofActive
-									? "Zoom unavailable during canvas proof"
-									: `Zoom: ${zoomPercentage}%`
-							}
-							className="min-w-11 px-1 py-1 text-center font-mono text-[10px] font-semibold tabular-nums text-muted-foreground"
-						>
-							{isCanvasProofActive ? "Proof" : `${zoomPercentage}%`}
-						</output>
-						<Button
-							type="button"
-							aria-label="Zoom in"
-							variant="ghost"
-							size="icon-sm"
-							disabled={isCanvasProofActive || zoom >= MAX_ZOOM}
-							onClick={() => adjustZoom(1)}
-						>
-							<ZoomIn />
-						</Button>
-						<Button
-							type="button"
-							aria-label="Fit canvas"
-							variant="ghost"
-							size="sm"
-							disabled={isCanvasProofActive}
-							onClick={() => setZoom(1)}
-						>
-							<Scan />
-							Fit canvas
-						</Button>
-					</div>
-				) : null}
-			</div>
+			<EditorCanvasNavbar
+				projectTitle={projectTitle}
+				onProjectTitleChange={onProjectTitleChange}
+				hasSelectedCard={Boolean(selectedCard)}
+				canvasProofMode={canvasProofMode}
+				onCanvasProofChange={changeCanvasProof}
+				canUndo={canUndo}
+				canRedo={canRedo}
+				onUndo={() => selectedCardId && undo(selectedCardId)}
+				onRedo={() => selectedCardId && redo(selectedCardId)}
+				hasCards={Boolean(cards.length)}
+				zoom={zoom}
+				zoomPercentage={zoomPercentage}
+				minZoom={MIN_ZOOM}
+				maxZoom={MAX_ZOOM}
+				isCanvasProofActive={isCanvasProofActive}
+				onAdjustZoom={adjustZoom}
+			/>
 
 			{cards.length ? (
 				<section
 					ref={emblaRef}
 					aria-label="Scrollable cards"
-					className="h-full touch-pan-y overflow-x-hidden scrollbar-none"
+					className="h-full touch-pan-y bg-[#e9e9e9] overflow-x-hidden scrollbar-none"
 					onWheel={handleWheel}
 				>
 					<div
@@ -505,7 +342,7 @@ export function EditorCanvas({
 								<button
 									type="button"
 									aria-label="Add new card"
-									className="flex items-center justify-center gap-3 border border-hairline bg-surface-deep text-sm font-semibold text-muted-foreground shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-colors hover:bg-surface-head hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+									className="flex items-center justify-center gap-3 border border-hairline bg-surface-deep text-sm font-semibold text-muted-foreground shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-colors hover:bg-[#DFDFDF] hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
 									style={{
 										width: selectedCard.width * zoom,
 										height: selectedCard.height * zoom,
@@ -549,95 +386,4 @@ export function EditorCanvas({
 			<CardTickNavigator />
 		</section>
 	);
-}
-
-function CanvasProofSelect({
-	value,
-	onChange,
-}: {
-	value: CanvasProofMode;
-	onChange: (value: string) => void;
-}) {
-	const selected = CANVAS_PROOF_OPTIONS.find((option) => option.mode === value);
-
-	return (
-		<Popover>
-			<PopoverTrigger asChild>
-				<Button
-					type="button"
-					aria-label={`Canvas proofs: ${selected?.label}`}
-					variant={value === "none" ? "ghost" : "secondary"}
-					size="icon-sm"
-					title={value === "none" ? "Canvas proofs" : selected?.label}
-				>
-					<ScanEye />
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent align="center" className="w-80">
-				<div className="px-1 pb-2">
-					<p className="text-xs font-semibold">Canvas proofs</p>
-					<p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
-						Temporary views for judging type in use.
-					</p>
-				</div>
-				<fieldset className="grid grid-cols-2 gap-1.5">
-					<legend className="sr-only">Canvas proofs</legend>
-					{CANVAS_PROOF_OPTIONS.map((option) => (
-						<label key={option.mode} className="cursor-pointer">
-							<input
-								type="radio"
-								name="canvas-proof"
-								value={option.mode}
-								checked={value === option.mode}
-								className="peer sr-only"
-								onChange={() => onChange(option.mode)}
-							/>
-							<span className="flex min-h-[5.5rem] flex-col gap-1 rounded-lg border border-hairline bg-white p-1.5 text-left text-[10px] text-muted-foreground peer-checked:border-2 peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:text-foreground">
-								<CanvasProofSwatch mode={option.mode} />
-								<span className="font-semibold">{option.label}</span>
-								<span className="leading-3.5">{option.description}</span>
-							</span>
-						</label>
-					))}
-				</fieldset>
-			</PopoverContent>
-		</Popover>
-	);
-}
-
-function CanvasProofSwatch({ mode }: { mode: CanvasProofMode }) {
-	return (
-		<span
-			aria-hidden="true"
-			className="flex h-9 w-full items-center justify-center gap-1 rounded-md border border-hairline bg-primary/5 p-1"
-		>
-			{mode === "none" ? (
-				<span className="h-6 w-10 rounded-sm border border-current bg-white" />
-			) : mode === "glance" ? (
-				<span className="h-3 w-5 rounded-[2px] border border-current bg-white blur-[.35px]" />
-			) : mode === "width" ? (
-				<>
-					<span className="h-6 w-4 rounded-[2px] border border-current bg-white" />
-					<span className="h-6 w-6 rounded-[2px] border border-current bg-white" />
-					<span className="h-6 w-8 rounded-[2px] border border-current bg-white" />
-				</>
-			) : (
-				<>
-					<span className="h-6 w-6 rounded-[2px] border border-current bg-white" />
-					<span className="h-6 w-6 rounded-[2px] bg-foreground" />
-					<span className="h-6 w-6 rounded-[2px] bg-[linear-gradient(135deg,#a8b3c8,#6b55b5,#e3ad82)]" />
-				</>
-			)}
-		</span>
-	);
-}
-
-function formatLastEdited(value: string | null) {
-	if (!value) return "Last edited —";
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) return "Last edited —";
-	return `Last edited ${date.toLocaleString([], {
-		dateStyle: "medium",
-		timeStyle: "short",
-	})}`;
 }

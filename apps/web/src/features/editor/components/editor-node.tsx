@@ -1,8 +1,6 @@
-import { X } from "lucide-react";
-import type { MouseEvent, PointerEvent } from "react";
+import type { PointerEvent } from "react";
 import { useEffect, useRef } from "react";
 
-import { deleteEditorImage } from "#/db/image-db";
 import { ImageNode } from "#/features/editor/components/image-node";
 import { ShapeNode } from "#/features/editor/components/shape-node";
 import { TextNode } from "#/features/editor/components/text-node";
@@ -206,23 +204,7 @@ export function EditorNode({
 					x: round(result.bounds.x),
 					y: round(result.bounds.y),
 				};
-				const textScale = Math.min(
-					nextBounds.width / origin.width,
-					nextBounds.height / origin.height,
-				);
-				useEditorStore.getState().updateNode(cardId, node.id, {
-					...nextBounds,
-					// Scale from gesture origin so type preserves its fit without drift.
-					...(node.type === "text"
-						? {
-								fontSize: scaleTypographyValue(node.fontSize, textScale),
-								letterSpacing: scaleTypographyValue(
-									node.letterSpacing,
-									textScale,
-								),
-							}
-						: {}),
-				});
+				useEditorStore.getState().updateNode(cardId, node.id, nextBounds);
 				onGuidesChange(result.guides);
 			});
 		}
@@ -240,58 +222,6 @@ export function EditorNode({
 		target.addEventListener("pointercancel", stopResizing);
 	}
 
-	function startWidthResizing(event: PointerEvent<HTMLButtonElement>) {
-		event.preventDefault();
-		event.stopPropagation();
-		selectNode();
-		useEditorStore.getState().beginHistoryTransaction(cardId);
-
-		const origin = {
-			pointerX: event.clientX,
-			width: node.width,
-		};
-		const target = event.currentTarget;
-		const guideEngine = createGuideEngine();
-		target.setPointerCapture(event.pointerId);
-
-		function resizeWidth(moveEvent: globalThis.PointerEvent) {
-			const clientX = moveEvent.clientX;
-			scheduleFrame(() => {
-				const maximumWidth = cardWidth - node.x;
-				const width = Math.min(
-					maximumWidth,
-					Math.max(24, origin.width + (clientX - origin.pointerX) / zoom),
-				);
-				const result = guideEngine.compute({ ...node, width }, { right: true });
-				useEditorStore
-					.getState()
-					.updateNode(cardId, node.id, { width: result.bounds.width });
-				onGuidesChange(result.guides);
-			});
-		}
-
-		function stopWidthResizing() {
-			finishInteraction();
-			useEditorStore.getState().endHistoryTransaction(cardId);
-			target.removeEventListener("pointermove", resizeWidth);
-			target.removeEventListener("pointerup", stopWidthResizing);
-			target.removeEventListener("pointercancel", stopWidthResizing);
-		}
-
-		target.addEventListener("pointermove", resizeWidth);
-		target.addEventListener("pointerup", stopWidthResizing);
-		target.addEventListener("pointercancel", stopWidthResizing);
-	}
-
-	function deleteNode(event: MouseEvent<HTMLButtonElement>) {
-		event.preventDefault();
-		event.stopPropagation();
-		if (node.type === "image" && node.imageId) {
-			void deleteEditorImage(node.imageId);
-		}
-		useEditorStore.getState().deleteNode(cardId, node.id);
-	}
-
 	return (
 		<div
 			ref={nodeRef}
@@ -299,8 +229,8 @@ export function EditorNode({
 			className={cn(
 				"absolute m-0 touch-none bg-transparent p-0 text-left transition-[box-shadow]",
 				isSelected
-					? "ring-1 ring-foreground/55 shadow-[0_0_0_1px_rgba(255,255,255,.55)]"
-					: "hover:ring-1 hover:ring-foreground/25",
+					? "ring-1 ring-accent/45 shadow-[0_0_0_1px_rgba(255,255,255,.55)]"
+					: "hover:ring-1 hover:ring-accent/25",
 			)}
 			style={{
 				left: node.x,
@@ -338,54 +268,19 @@ export function EditorNode({
 			)}
 			{isSelected ? (
 				<>
-					<button
-						type="button"
-						aria-label={`Delete ${node.type} node from card`}
-						className="absolute top-1 right-1 z-30 flex size-4 items-center justify-center rounded-full bg-foreground/80 p-0 text-background shadow-sm outline-none transition-colors hover:bg-destructive focus-visible:ring-1 focus-visible:ring-foreground/30"
-						onClick={deleteNode}
-						onPointerDown={(event) => event.stopPropagation()}
-					>
-						<X className="size-2.5" />
-					</button>
-					{node.type === "text" ? (
-						<button
-							type="button"
-							data-editor-node-width-handle
-							aria-label="Resize text width"
-							className="absolute top-1/2 right-0 z-30 h-5 w-1.5 -translate-y-1/2 translate-x-1/2 cursor-ew-resize touch-none rounded-full bg-foreground/70 p-0 shadow-sm outline-none"
-							onClick={(event) => event.stopPropagation()}
-							onPointerDown={startWidthResizing}
-						/>
-					) : null}
 					{(
 						[
-							[
-								"n",
-								"top-0 left-1/2 h-1.5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-ns-resize",
-							],
-							[
+						[
 								"ne",
 								"top-0 right-0 size-2.5 translate-x-1/2 -translate-y-1/2 cursor-nesw-resize",
-							],
-							[
-								"e",
-								"top-1/2 right-0 h-5 w-1.5 translate-x-1/2 -translate-y-1/2 cursor-ew-resize",
 							],
 							[
 								"se",
 								"right-0 bottom-0 size-2.5 translate-x-1/2 translate-y-1/2 cursor-nwse-resize",
 							],
 							[
-								"s",
-								"bottom-0 left-1/2 h-1.5 w-5 -translate-x-1/2 translate-y-1/2 cursor-ns-resize",
-							],
-							[
 								"sw",
 								"bottom-0 left-0 size-2.5 -translate-x-1/2 translate-y-1/2 cursor-nesw-resize",
-							],
-							[
-								"w",
-								"top-1/2 left-0 h-5 w-1.5 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize",
 							],
 							[
 								"nw",
@@ -397,13 +292,9 @@ export function EditorNode({
 							key={direction}
 							type="button"
 							data-editor-node-resize-handle={direction}
-							aria-label={
-								direction === "se"
-									? `Resize ${node.type} node`
-									: `Resize ${node.type} node from ${direction}`
-							}
+							aria-label={`Resize ${node.type} node from ${direction}`}
 							className={cn(
-								"absolute z-30 touch-none rounded-[2px] bg-foreground/75 p-0 shadow-sm outline-none",
+								"absolute z-30 touch-none rounded-[2px] bg-accent/60 p-0 shadow-sm outline-none",
 								position,
 							)}
 							onClick={(event) => event.stopPropagation()}
@@ -414,8 +305,4 @@ export function EditorNode({
 			) : null}
 		</div>
 	);
-}
-
-function scaleTypographyValue(value: number, scale: number) {
-	return Math.round(value * scale * 100) / 100;
 }
